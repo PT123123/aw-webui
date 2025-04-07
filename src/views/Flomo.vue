@@ -4,8 +4,10 @@ div
     | #[b Note:] ActivityWatch on Android is in a very early stage of development. There will be bugs, but we hope you bear with us as we refine things and get it on par with the desktop version of ActivityWatch (which you should try!).
 
   h3 Hello early user,000
-  p1111111
-    | If you c, we hope you can contribute by writing a watcher, visualization, or something else, and share it with us on the forum!
+  p222vide feedback and help us turn ActivityWatch into a successful project.
+    | Early users like you mean a lot to us, and we hope you'll reach out to us with any ideas you have for improvements!
+  p
+    | If you are a developer, we hope you can contribute by writing a watcher, visualization, or something else, and share it with us on the forum!
   p
     div Thank you for using ActivityWatch!
     small If you have a minute to spare, please take the time to fill out our #[a(href="https://forms.gle/q2N9K5RoERBV8kqPA") user survey] or #[a(href="https://forum.activitywatch.net/c/features") vote on features on the forum].
