@@ -1,24 +1,14 @@
 <template lang="pug">
 div
   b-alert(v-if="$isAndroid" show)
-    | #[b {{ $t('home.note') }}] {{ $t('home.androidNote') }}
+    | #[b Note:] ActivityWatch on Android is in a very early stage of development. There will be bugs, but we hope you bear with us as we refine things and get it on par with the desktop version of ActivityWatch (which you should try!).
 
-  b-alert.supporter-nudge(v-if="supporterNudgeVisible" show variant="success" dismissible @dismissed="snoozeSupporterNudge")
-    span {{ $t('home.supporterNudge.message') }}
-    b-button.ml-2(size="sm" variant="primary" :href="supporterNudgeHref" target="_blank" @click="onSupporterNudgeSupport") {{ $t('home.supporterNudge.support') }}
-    b-button.ml-1(size="sm" variant="link" @click="snoozeSupporterNudge") {{ $t('home.supporterNudge.notNow') }}
-
-  h3 {{ $t('home.greeting') }}
+  h3 Hello early user,000
+  p1111111
+    | If you c, we hope you can contribute by writing a watcher, visualization, or something else, and share it with us on the forum!
   p
-    | {{ homeIntro1 }}
-  p
-    | {{ $t('home.intro3') }}
-  p.mb-0 {{ $t('home.thanks') }}
-  p
-    a(href="https://activitywatch.net/go/?src=inapp-survey&to=survey") {{ $t('home.surveyFill') }}
-    | &nbsp;{{ $t('home.surveyOr') }}&nbsp;
-    a(href="https://activitywatch.net/go/?src=inapp-forum&to=forum") {{ $t('home.voteForum') }}
-    | &nbsp;{{ $t('home.surveySuffix') }}
+    div Thank you for using ActivityWatch!
+    small If you have a minute to spare, please take the time to fill out our #[a(href="https://forms.gle/q2N9K5RoERBV8kqPA") user survey] or #[a(href="https://forum.activitywatch.net/c/features") vote on features on the forum].
 
   hr
 
