@@ -1,5 +1,8 @@
 module.exports = {
-  presets: ['@vue/cli-plugin-babel/preset'],
-  plugins: ['lodash', '@babel/plugin-proposal-nullish-coalescing-operator'],
-  comments: false,
+  presets: [
+    ['@vue/cli-plugin-babel/preset', { 
+      useBuiltIns: 'entry',
+      modules: 'auto' // 添加此配置
+    }]
+  ]
 };

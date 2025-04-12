@@ -5,7 +5,7 @@ const Home = () => import('./views/Home.vue');
 
 // Activity views for desktop
 const Activity = () => import('./views/activity/Activity.vue');
-const FlomoPage = () => import('./views/FlomoPage.vue');
+const FlomoPage = () => import('./views/Flomo.vue');
 const ActivityView = () => import('./views/activity/ActivityView.vue');
 
 const Buckets = () => import('./views/Buckets.vue');
