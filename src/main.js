@@ -68,8 +68,8 @@ Vue.mixin(asyncErrorCapturedMixin);
 
 // Set the PRODUCTION constant
 // FIXME: Thould follow Vue convention and start with a $.
-Vue.prototype.PRODUCTION = PRODUCTION;
-Vue.prototype.COMMIT_HASH = COMMIT_HASH;
+Vue.prototype.PRODUCTION = process.env.NODE_ENV === 'production';
+Vue.prototype.COMMIT_HASH = process.env.COMMIT_HASH || 'dev';
 
 // Set the $isAndroid constant
 Vue.prototype.$isAndroid = process.env.VUE_APP_ON_ANDROID;
@@ -94,3 +94,20 @@ Vue.prototype.$aw = getClient();
 
 // Must be run after vue init since it relies on the settings store
 configureClient();
+
+/* 删除以下重复的Vue3初始化代码 */
+// import { createApp } from 'vue'
+// import App from './App.vue'
+// import router from './route'
+// import { createPinia } from 'pinia'
+// 
+// const app = createApp(App)
+// app.use(router)
+// app.use(createPinia())
+// app.mount('#app')
+
+// 在Vue实例创建前添加
+Vue.filter('formatDate', function(value) {
+  if (!value) return ''
+  return moment(value).format('YYYY-MM-DD HH:mm')
+})
