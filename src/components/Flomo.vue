@@ -24,9 +24,12 @@
     </div>
 
     <!-- 悬浮按钮 -->
-    <button class="floating-action" @click="handleClick">+</button>
+    <div class="floating-action" @click="showInput = true">
+      <span>+</span>
+    </div>
 
     <!-- 输入弹窗 -->
+    <!-- 输入弹窗结构 -->
     <div v-show="showInput" class="input-modal">
       <div class="modal-backdrop" @click.self="showInput = false"></div>
       <div class="modal-content">
@@ -35,7 +38,7 @@
           v-model.trim="newNoteContent"
           placeholder="输入你的想法..."
           ref="noteInput"
-          @keydown.enter.exact.prevent="addNote"
+          @keydown.enter.exact.prevent="handleEnterKey($event)"
           :disabled="isSubmitting"
         ></textarea>
         <div class="button-group">
@@ -64,43 +67,58 @@ export default {
       notes: [],
       sortMethod: 'created',
       showInput: false,
-      newNoteContent: ''
+      newNoteContent: '',
+      isSubmitting: false // 确保此状态存在
     }
   },
-  async created() {
-    console.log('Flomo component created')
-    try {
-      await this.loadNotes()
-    } catch (e) {
-      console.error('Flomo init error:', e)
+  watch: {
+    showInput(newVal) {
+      console.log('弹窗状态:', newVal)
     }
   },
   methods: {
+    // 修复后的数据加载方法
     async loadNotes() {
       try {
-        const response = await flomoApi.getNotes()
-        console.log('完整响应:', response)
-        // 根据实际数据结构调整（如果数据在response.data.data中）
-        this.notes = response.data.data || response.data
+        const response = await flomoApi.getNotes()  // [!code ++]
+        console.log('加载响应:', response)          // [!code ++]
+        this.notes = response.data.data || response.data  // [!code ++]
       } catch (error) {
-        console.error('加载失败:', error)
+        console.error('加载失败:', error)            // [!code ++]
         this.notes = []
       }
     },
+
+    // 添加缺失的方法
+    sortBy(method) {
+      this.sortMethod = method
+    },
+    refreshData() {
+      this.loadNotes()
+    },
+    
     async addNote() {
+      console.log('提交按钮被点击')
       if (!this.newNoteContent) {
+        console.warn('提交被阻止：内容为空')  // [!code ++]
         this.$bvToast.toast('内容不能为空', { variant: 'warning' })
         return
       }
-      
+      console.log('开始提交到API')  // [!code ++]
       try {
+        
         this.isSubmitting = true
-        await flomoApi.createNote({ 
+        const response = await flomoApi.createNote({   // [!code ++]
           content: this.newNoteContent 
         })
-        await this.loadNotes() // 确保加载最新数据
+        console.log('API响应:', response)  // [!code ++]
+        
+        console.log('开始刷新笔记列表')  // [!code ++]
+        await this.loadNotes()
+        
         this.newNoteContent = ''
         this.showInput = false
+        console.log('提交完成，已重置表单')  // [!code ++]
       } catch (error) {
         console.error('创建失败:', error)
         this.$bvToast.toast(`创建失败: ${error.message}`, { variant: 'danger' })
@@ -108,28 +126,14 @@ export default {
         this.isSubmitting = false
       }
     },
-    handleClick() {
-      console.log('按钮被点击');  // 调试日志
-      this.openInputModal();  // 调用输入函数
-    },
-    openInputModal() {
-      // 打开输入弹窗的逻辑
-      console.log('打开输入弹窗');
-      this.showInput = true;
-    }
-  },
-  computed: {
-    sortedNotes() {
-      return [...this.notes].sort((a, b) => {
-        // 使用实际的时间戳字段（可能是created_at或timestamp）
-        const timeA = new Date(a.created_at || a.timestamp)
-        const timeB = new Date(b.created_at || b.timestamp)
-        return timeB - timeA
-      })
-    }
   }
 }
 </script>
+
+<!-- 仅修改悬浮按钮点击事件 -->
+<div class="floating-action" @click="showInput = true; console.log('点击触发')">
+  <span>+</span>
+</div>
 
 <style scoped>
 /* 悬浮按钮样式 */
@@ -139,17 +143,22 @@ export default {
   right: 30px;
   width: 60px;
   height: 60px;
-  background-color: #007bff;
+  background: #4CAF50;
   color: white;
-  border: none;
   border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 24px;
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  z-index: 1000;
+  transition: all 0.3s ease;
 }
 
 .floating-action:hover {
-  background-color: #0056b3;
+  transform: scale(1.1);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.3);
 }
 
 .input-modal {
@@ -242,3 +251,13 @@ button:hover {
   }
 }
 </style>
+
+methods: {
+  handleEnterKey(event) {
+    // 仅当按下纯Enter键时触发提交
+    if (event.key === 'Enter' && !event.shiftKey) {
+      this.addNote();
+    }
+    // 移除event.preventDefault() 保留默认输入行为
+  },
+}
