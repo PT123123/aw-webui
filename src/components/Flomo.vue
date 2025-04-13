@@ -76,15 +76,40 @@ export default {
       console.log('弹窗状态:', newVal)
     }
   },
+  // 添加过滤器
+  filters: {
+    formatDate(dateStr) {
+      if (!dateStr) return ''
+      return new Date(dateStr).toLocaleString()
+    }
+  },
+
+  // 添加计算属性
+  computed: {
+    sortedNotes() {
+      return [...this.notes].sort((a, b) => {
+        const timeA = new Date(a.created_at).getTime()
+        const timeB = new Date(b.created_at).getTime()
+        return timeB - timeA // 降序排列
+      })
+    }
+  },
+
   methods: {
-    // 修复后的数据加载方法
+    // 修复数据加载方法
     async loadNotes() {
       try {
-        const response = await flomoApi.getNotes()  // [!code ++]
-        console.log('加载响应:', response)          // [!code ++]
-        this.notes = response.data.data || response.data  // [!code ++]
+        const response = await flomoApi.getNotes()
+        console.log('API响应:', response)
+        // 修正数据赋值逻辑
+        this.notes = response.data || []  // [!code focus]
+        
+        // 调试检查
+        if (this.notes.length > 0) {
+          console.log('首条笔记数据:', this.notes[0])
+        }
       } catch (error) {
-        console.error('加载失败:', error)            // [!code ++]
+        console.error('加载失败:', error)
         this.notes = []
       }
     },
