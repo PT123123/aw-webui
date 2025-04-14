@@ -1,7 +1,7 @@
 <template>
   <div>
-    <h1>Flomo 页面</h1>
-    <p>这是一个类似 Flomo 的展示页面。</p>
+    <h1>Inbox 页面</h1>
+    <p>这是一个类似 Inbox 的展示页面。</p>
   </div>
 </template>
 

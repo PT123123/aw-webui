@@ -1,5 +1,5 @@
 <template>
-  <div class="flomo-container">
+  <div class="inbox-container">
     <!-- 排序选项 -->
     <div class="sort-options">
       <button @click="sortBy('created')" :class="{ active: sortMethod === 'created' }">
@@ -12,13 +12,16 @@
 
     <!-- 笔记列表 -->
     <div class="note-list">
-      <div v-for="note in sortedNotes" :key="note.id" class="note-item">
-        <!-- 修改数据绑定路径 -->
-        <div class="note-content">{{ note.content }}</div>
+      <div 
+        v-for="note in sortedNotes" 
+        :key="note.id" 
+        class="note-item"
+        @dblclick="handleEditNote(note)"
+      >
+        <div class="note-content">{{ note?.content }}</div>
         <div class="note-meta">
-          <!-- 添加时间戳格式化 -->
           <span>创建: {{ note.created_at | formatDate }}</span>
-          <span v-if="note.updated_at">修改: {{ note.updated_at | formatDate }}</span>  <!-- [!code ++] -->
+          <span v-if="note.updated_at">修改: {{ note.updated_at | formatDate }}</span>
         </div>
       </div>
     </div>
@@ -28,28 +31,27 @@
       <span>+</span>
     </div>
 
-    <!-- 输入弹窗 -->
-    <!-- 输入弹窗结构 -->
+    <!-- 修改后的输入弹窗 -->
     <div v-show="showInput" class="input-modal">
-      <div class="modal-backdrop" @click.self="showInput = false"></div>
+      <div class="modal-backdrop" @click.self="cancelEdit"></div>
       <div class="modal-content">
-        <h3 class="modal-title">新建笔记</h3>
+        <h3 class="modal-title">{{ editingNote ? '编辑笔记' : '新建笔记' }}</h3>
         <textarea
-          v-model.trim="newNoteContent"
+          v-model.trim="editContent"
           placeholder="输入你的想法..."
           ref="noteInput"
-          @keydown.enter.exact.prevent="handleEnterKey($event)"
+          @keydown.enter.exact.prevent="handleSubmit"
           :disabled="isSubmitting"
         ></textarea>
         <div class="button-group">
           <button 
-            @click="addNote"
-            :disabled="!newNoteContent || isSubmitting"
+            @click="handleSubmit"
+            :disabled="!editContent || isSubmitting"
             class="submit-btn"
           >
-            {{ isSubmitting ? '提交中...' : '提交' }}
+            {{ isSubmitting ? '提交中...' : '确认' }}
           </button>
-          <button @click="showInput = false" class="cancel-btn">取消</button>
+          <button @click="cancelEdit" class="cancel-btn">取消</button>
         </div>
       </div>
     </div>
@@ -59,7 +61,7 @@
 </template>
 
 <script>
-import flomoApi from '../api/flomo'
+import flomoApi from '../api/inbox'
 
 export default {
   data() {
@@ -68,7 +70,9 @@ export default {
       sortMethod: 'created',
       showInput: false,
       newNoteContent: '',
-      isSubmitting: false // 确保此状态存在
+      isSubmitting: false, // 确保此状态存在
+      editContent: '',      // [!code ++]
+      editingNote: null,   // [!code ++]
     }
   },
   watch: {
@@ -92,36 +96,61 @@ export default {
   // 添加计算属性
   computed: {
     sortedNotes() {
-      return [...this.notes].sort((a, b) => {
-        const timeA = new Date(a.created_at).getTime()
-        const timeB = new Date(b.created_at).getTime()
-        return timeB - timeA // 降序排列
-      })
+      // 添加空值过滤
+      return [...this.notes]
+        .filter(note => !!note)  // [!code ++] 确保非空
+        .filter(note => !!note?.content)  // [!code ++] 过滤空内容
+        .sort((a, b) => {
+          // 添加日期空值处理
+          const timeA = new Date(a?.created_at || 0).getTime()  // [!code ++]
+          const timeB = new Date(b?.created_at || 0).getTime()  // [!code ++]
+          return timeB - timeA
+        })
     }
   },
 
   methods: {
     // 修复数据加载方法
-    async loadNotes() {
+    async loadNotes(initialLoad = true) {
+      if (this.isLoadingMore) return;
+      
       try {
-        const response = await flomoApi.getNotes()
-        console.log('API响应:', response)
-        // 修正数据赋值逻辑
-        this.notes = response.data || []  // [!code focus]
+        this.isLoadingMore = true;
+        const response = await flomoApi.getNotes(50, this.currentOffset);
         
-        // 调试检查
-        if (this.notes.length > 0) {
-          console.log('首条笔记数据:', this.notes[0])
+        if (initialLoad) {
+          this.notes = response.data || [];
+        } else {
+          this.notes = [...this.notes, ...response.data];
         }
+        
+        this.hasMore = response.data.length === 50;
+        this.currentOffset += response.data.length;
       } catch (error) {
-        console.error('加载失败:', error)
-        this.notes = []
+        console.error('加载失败:', error);
+      } finally {
+        this.isLoadingMore = false;
       }
     },
 
-    // 添加缺失的方法
+    initScrollObserver() {
+      const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && this.hasMore && !this.isLoadingMore) {
+          this.loadNotes(false);
+        }
+      });
+
+      this.$nextTick(() => {
+        const trigger = document.querySelector('.load-more-trigger');
+        if (trigger) observer.observe(trigger);
+      });
+    },
+
     sortBy(method) {
-      this.sortMethod = method
+      this.sortMethod = method;
+      this.currentOffset = 0;
+      this.hasMore = true;
+      this.loadNotes();
     },
     refreshData() {
       this.loadNotes()
@@ -156,7 +185,58 @@ export default {
         this.isSubmitting = false
       }
     },
-  }
+    // 新增编辑处理方法  // [!code ++]
+    handleEditNote(note) {  // [!code ++]
+      this.editingNote = note  // [!code ++]
+      this.editContent = note?.content  // [!code ++]
+      this.showInput = true  // [!code ++]
+      this.$nextTick(() => this.$refs.noteInput.focus())  // [!code ++]
+    },  // [!code ++]
+
+    // 修改后的提交方法
+    async handleSubmit() {
+      try {
+        this.isSubmitting = true
+        if (this.editingNote) {
+          // 调用更新接口
+          await flomoApi.updateNote(this.editingNote.id, {
+            content: this.editContent
+          })
+          // 本地更新数据
+          this.notes = this.notes.map(n => 
+            n.id === this.editingNote.id ? {...n, 
+              content: this.editContent,
+              updated_at: new Date().toISOString()  // 添加自动更新时间
+            } : n
+          )
+        } else {
+          // 创建新笔记
+          await flomoApi.createNote({ content: this.editContent })
+          await this.loadNotes()
+        }
+        this.cancelEdit()
+      } catch (error) {
+        console.error('操作失败:', error)
+        this.$bvToast.toast(`操作失败: ${error.message}`, { variant: 'danger' })
+      } finally {
+        this.isSubmitting = false
+      }
+    },  // [!code ++: 添加逗号]
+
+    // 取消编辑
+    cancelEdit() {  
+      this.showInput = false  
+      this.editingNote = null  
+      this.editContent = ''  
+    },  // [!code ++]
+
+    handleEnterKey(event) {
+      // 仅当按下纯Enter键时触发提交
+      if (event.key === 'Enter' && !event.shiftKey) {
+        this.addNote();
+      }
+    },
+  }  // [!code --: 移除多余括号]
 }
 </script>
 
@@ -353,13 +433,3 @@ button:hover {
   }
 }
 </style>
-
-methods: {
-  handleEnterKey(event) {
-    // 仅当按下纯Enter键时触发提交
-    if (event.key === 'Enter' && !event.shiftKey) {
-      this.addNote();
-    }
-    // 移除event.preventDefault() 保留默认输入行为
-  },
-}
