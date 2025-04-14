@@ -18,7 +18,7 @@
         <div class="note-meta">
           <!-- 添加时间戳格式化 -->
           <span>创建: {{ note.created_at | formatDate }}</span>
-          <span v-if="note.updated_at">修改: {{ formatDate(note.updated_at) }}</span>
+          <span v-if="note.updated_at">修改: {{ note.updated_at | formatDate }}</span>  <!-- [!code ++] -->
         </div>
       </div>
     </div>
@@ -79,8 +79,13 @@ export default {
   // 添加过滤器
   filters: {
     formatDate(dateStr) {
-      if (!dateStr) return ''
-      return new Date(dateStr).toLocaleString()
+      if (!dateStr) return ''  // 确保处理空值情况
+      try {
+        return new Date(dateStr).toLocaleString()
+      } catch (e) {
+        console.error('日期格式错误:', dateStr)
+        return ''
+      }
     }
   },
 
@@ -161,6 +166,78 @@ export default {
 </div>
 
 <style scoped>
+/* 新增笔记列表样式 */
+.note-list {
+  margin: 20px 0;
+}
+
+.note-item {
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.note-content {
+  padding: 15px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+  border-bottom: 1px solid #eee;
+}
+
+.note-meta {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 10px 15px;
+  font-size: 14px;
+  color: #666;
+}
+
+.note-meta span {
+  margin-right: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.note-meta span:before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ddd;
+  margin-right: 8px;
+}
+
+/* 排序按钮样式优化 */
+.sort-options {
+  margin-bottom: 20px;
+}
+
+.sort-options button {
+  margin-right: 10px;
+  padding: 8px 16px;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.sort-options button.active {
+  background: #007bff;
+  color: white;
+}
+
+/* 刷新按钮样式 */
+button[onclick="refreshData"] {
+  margin-top: 20px;
+  padding: 8px 16px;
+  background: #6c757d;
+}
+
+button[onclick="refreshData"]:hover {
+  background: #5a6268;
+}
+
 /* 悬浮按钮样式 */
 .floating-action {
   position: fixed;
