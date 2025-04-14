@@ -43,6 +43,12 @@ div(:class="{'fixed-top-padding': fixedTopMenu}")
           div.px-2.px-lg-1
             icon(name="stopwatch")
             | Stopwatch
+            
+        // 新增Inbox项（复用database图标）
+        b-nav-item(to="/inbox")
+          div.px-2.px-lg-1
+            icon(name="database")
+            | Inbox
 
       // Brand on large screens (centered)
       b-navbar-nav.abs-center.d-none.d-lg-block

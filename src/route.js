@@ -5,7 +5,7 @@ const Home = () => import('./views/Home.vue');
 
 // Activity views for desktop
 const Activity = () => import('./views/activity/Activity.vue');
-const FlomoPage = () => import('./views/Flomo.vue');
+const FlomoPage = () => import('./views/Inbox.vue');
 const ActivityView = () => import('./views/activity/ActivityView.vue');
 
 const Buckets = () => import('./views/Buckets.vue');
@@ -55,7 +55,7 @@ const router = new VueRouter({
         },
       ],
     },
-    {path: '/flomo', component: FlomoPage},
+    { path: '/inbox', component: FlomoPage},
     { path: '/buckets', component: Buckets },
     { path: '/buckets/:id', component: Bucket, props: true },
     { path: '/timeline', component: Timeline, meta: { fullContainer: true } },
