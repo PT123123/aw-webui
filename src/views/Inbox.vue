@@ -7,7 +7,7 @@
 </template>
 
 <script>
-import InboxComponent from '../components/Inbox.vue'
+import InboxComponent from '../components/InboxView.vue'
 
 export default {
   components: {
