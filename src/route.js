@@ -31,7 +31,7 @@ const router = new VueRouter({
     {
       path: '/',
       redirect: _to => {
-        return localStorage.landingpage || '/home';
+        return '/inbox';
       },
     },
     { path: '/home', component: Home },

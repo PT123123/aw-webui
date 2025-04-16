@@ -1,36 +1,36 @@
 <template>
-  <div class="note-list" @click="handleTagClick">
+  <div class="note-list" :class="{ 'dark-mode': isDarkMode }" @click="handleTagClick">
     <div
       v-for="note in sortedNotes"
       :key="note.id"
       class="note-item"
+      :class="{ 'dark-mode': isDarkMode }"
       @dblclick="$emit('edit-note', note)"
       ref="noteItems"
     >
-      <div class="note-content">
+      <div class="note-content" :class="{ 'dark-mode': isDarkMode }">
         <div v-html="highlightTagsInContent(note?.content)" class="content-text"></div>
         <div class="note-actions">
           <div class="dropdown" :ref="el => setDropdownRef(el, note.id)">
             <button class="dropdown-toggle" @click.stop="toggleMenu(note.id)">
-              <span style="font-size: 1.2em; cursor: pointer;">⋮</span>
+              <span style="font-size: 1.2em; cursor: pointer;" :class="{ 'dark-mode': isDarkMode }">⋮</span>
             </button>
-            <ul v-if="openMenuId === note.id" class="dropdown-menu memos-dropdown-menu">
+            <ul v-if="openMenuId === note.id" class="dropdown-menu memos-dropdown-menu" :class="{ 'dark-mode': isDarkMode }">
               <li @click.stop="handleDelete(note.id)">删除</li>
-              <!-- Add other actions here if needed -->
             </ul>
           </div>
         </div>
       </div>
-      <div class="note-meta">
+      <div class="note-meta" :class="{ 'dark-mode': isDarkMode }">
         <span>创建: {{ note.created_at | formatDate }}</span>
         <span v-if="note.updated_at">修改: {{ note.updated_at | formatDate }}</span>
         <div v-if="note.tags && note.tags.length > 0" class="note-tags">
           标签:
-          <span v-for="tag in note.tags" :key="tag" class="tag">#{{ tag }}</span>
+          <span v-for="tag in note.tags" :key="tag" class="tag" :class="{ 'dark-mode': isDarkMode }">#{{ tag }}</span>
         </div>
       </div>
     </div>
-    <p v-if="sortedNotes.length === 0 && !isLoadingMore">没有笔记显示。</p>
+    <p v-if="sortedNotes.length === 0 && !isLoadingMore" :class="{ 'dark-mode': isDarkMode }">没有笔记显示。</p>
   </div>
 </template>
 
@@ -40,6 +40,10 @@ export default {
     filterTag: String,
     sortedNotes: Array,
     isLoadingMore: Boolean,
+    isDarkMode: {
+      type: Boolean,
+      default: true, // 设置默认值为 true，开启默认黑暗模式
+    },
   },
   emits: ['edit-note', 'filter-by-tag', 'delete-note'],
   data() {
@@ -126,6 +130,13 @@ export default {
 /* Note List Styles */
 .note-list {
   margin: 20px 0;
+  background-color: #000000; /* 设置 note-list 容器的背景为黑色 */
+}
+.note-list.dark-mode {
+  background-color: #000000; /* 确保黑暗模式下也是黑色 */
+}
+.note-list.dark-mode > p {
+  color: #ccc;
 }
 .note-list > p {
   color: #777;
@@ -140,14 +151,18 @@ export default {
   margin-bottom: 15px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   transition: box-shadow 0.2s ease;
-  /* --- 重要修改 --- */
-  /* 如果是 .note-item 的 overflow 导致的问题，取消下面这行的注释 */
-  /* 或者如果它之前是 overflow: hidden / scroll / auto，将其改为 visible */
-  overflow: visible !important; /* !important 仅作为强制覆盖，如果能直接修改源规则更好 */
-  /* position: relative; */ /* 移除或注释掉这行，除非绝对需要，它会创建层叠上下文 */
+  overflow: visible !important;
+}
+.note-item.dark-mode {
+  background: #000000; /* 设置 note-item 的背景为黑色 */
+  border-color: #333;
+  color: #f5f5f5;
 }
 .note-item:hover {
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.note-item.dark-mode:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
 .note-content {
@@ -161,16 +176,16 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-   /* --- 可能的修改点 --- */
-  /* 如果是 .note-content 的 overflow 导致的问题，修改这里 */
-  /* overflow: visible; */ /* 默认为 visible，但如果被其他样式覆盖了，需要显式设置 */
+  overflow: visible;
+}
+.note-content.dark-mode {
+  color: #f5f5f5;
+  border-bottom-color: #333;
 }
 
 .content-text {
   flex-grow: 1;
   margin-right: 10px;
-   /* 如果 content-text 本身有 overflow:hidden, 也要改 */
-   /* overflow: visible; */
 }
 
 /* 使用 ::v-deep (Vue 3) 或 >>> (某些 CSS 预处理器) */
@@ -182,8 +197,15 @@ export default {
   cursor: pointer;
   text-decoration: underline;
 }
+.note-content.dark-mode ::v-deep(.content-tag) {
+  color: #bb86fc !important;
+  background-color: #292929;
+}
 .note-content ::v-deep(.content-tag:hover) {
   background-color: #bbdefb;
+}
+.note-content.dark-mode ::v-deep(.content-tag:hover) {
+  background-color: #3d3d3d;
 }
 
 .note-meta {
@@ -193,6 +215,9 @@ export default {
   padding: 10px 15px;
   font-size: 0.85em;
   color: #666;
+}
+.note-meta.dark-mode {
+  color: #ccc;
 }
 .note-meta span {
   display: flex;
@@ -214,18 +239,24 @@ export default {
     font-size: 0.8em;
     cursor: pointer;
 }
+.note-tags .tag.dark-mode {
+  background-color: #292929;
+  color: #bb86fc;
+}
 .note-tags .tag:hover {
     background-color: #bbdefb;
+}
+.note-tags .tag.dark-mode:hover {
+  background-color: #3d3d3d;
 }
 
 .note-actions {
   display: inline-block;
   flex-shrink: 0;
-  /* 这个元素通常不需要 overflow 或 position */
 }
 
 .dropdown {
-  position: relative; /* 正确：作为菜单定位的基准 */
+  position: relative;
   display: inline-block;
 }
 
@@ -238,17 +269,19 @@ export default {
   display: flex;
   align-items: center;
 }
+.dark-mode .dropdown-toggle span {
+  color: #f5f5f5;
+}
 
 .memos-dropdown-menu {
-  position: absolute; /* 正确：相对于 .dropdown 定位 */
+  position: absolute;
   top: 100%;
   right: 0;
   background-color: #fff;
   border: 1px solid #ddd;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  /* 确保 z-index 足够高，尝试更大的值如果需要 */
-  z-index: 1050; /* 稍微提高一点，确保在常用模态框之上 */
+  z-index: 1050;
   list-style: none;
   padding: 5px 0;
   margin: 2px 0 0 0;
@@ -257,9 +290,12 @@ export default {
   opacity: 1;
   transform: translateY(0);
   transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
-   /* 确保 display 和 visibility 正确 */
-  display: block; /* or list-item, but block is fine */
+  display: block;
   visibility: visible;
+}
+.memos-dropdown-menu.dark-mode {
+  background-color: #000000; /* 设置下拉菜单背景为黑色 */
+  border-color: #555;
 }
 
 .memos-dropdown-menu li {
@@ -269,8 +305,14 @@ export default {
   color: #333;
   white-space: nowrap;
 }
+.memos-dropdown-menu.dark-mode li {
+  color: #f5f5f5;
+}
 
 .memos-dropdown-menu li:hover {
   background-color: #f5f5f5;
+}
+.memos-dropdown-menu.dark-mode li:hover {
+  background-color: #444;
 }
 </style>
