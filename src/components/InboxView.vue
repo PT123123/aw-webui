@@ -1,42 +1,43 @@
 <template>
-  <div class="app-container-modified">
-    <div class="sidebar-toggle" @click="toggleSidebar">
+  <div class="app-container-modified" :class="{ 'dark-mode': isDarkMode }">
+    <div class="sidebar-toggle" @click="toggleSidebar" :class="{ 'dark-mode': isDarkMode }">
       <span class="icon" :class="{ open: !showSidebar }">▶</span>
     </div>
 
-    <aside class="filter-sidebar" :class="{ 'sidebar-open': showSidebar }">
-      <div class="sidebar-content">
-        <div class="sidebar-header">
+    <aside class="filter-sidebar" :class="{ 'sidebar-open': showSidebar, 'dark-mode': isDarkMode }">
+      <div class="sidebar-content" :class="{ 'dark-mode': isDarkMode }">
+        <div class="sidebar-header" :class="{ 'dark-mode': isDarkMode }">
           <h3>筛选选项</h3>
-          <span v-if="currentTag" class="current-filter"> (当前筛选: #{{ currentTag }})</span>
-          <button @click.stop="handleCloseSidebar" class="close-btn">×</button>
+          <span v-if="currentTag" class="current-filter" :class="{ 'dark-mode': isDarkMode }"> (当前筛选: #{{ currentTag }})</span>
+          <button @click.stop="handleCloseSidebar" class="close-btn" :class="{ 'dark-mode': isDarkMode }">×</button>
+          <button @click="$emit('toggle-dark-mode')" class="dark-mode-toggle">🌙</button>
         </div>
-        <div class="tag-filter">
+        <div class="tag-filter" :class="{ 'dark-mode': isDarkMode }">
           <h4>标签</h4>
-          <ul v-if="allTags && allTags.length > 0" class="tag-list">
+          <ul v-if="allTags && allTags.length > 0" class="tag-list" :class="{ 'dark-mode': isDarkMode }">
             <li
               v-for="tag in allTags"
               :key="tag"
               @click="filterByTag(tag)"
-              :class="{ active: currentTag === tag }"
+              :class="{ active: currentTag === tag, 'dark-mode': isDarkMode }"
             >
               #{{ tag }}
             </li>
           </ul>
-          <p v-else-if="!isLoadingTags">暂无标签。</p>
-          <p v-else>加载标签中...</p>
-          <button v-if="currentTag" @click="clearTagFilter" class="clear-filter-btn">清除筛选</button>
+          <p v-else-if="!isLoadingTags" :class="{ 'dark-mode': isDarkMode }">暂无标签。</p>
+          <p v-else :class="{ 'dark-mode': isDarkMode }">加载标签中...</p>
+          <button v-if="currentTag" @click="clearTagFilter" class="clear-filter-btn" :class="{ 'dark-mode': isDarkMode }">清除筛选</button>
         </div>
       </div>
     </aside>
 
-    <main class="main-content">
-      <div class="controls">
+    <main class="main-content" :class="{ 'dark-mode': isDarkMode }">
+      <div class="controls" :class="{ 'dark-mode': isDarkMode }">
         <div class="sort-options">
           <button @click="sortBy('created')" :class="{ active: sortMethod === 'created' }">按创建时间</button>
           <button @click="sortBy('updated')" :class="{ active: sortMethod === 'updated' }">按修改时间</button>
         </div>
-        <button @click="refreshData" class="refresh-btn">刷新</button>
+        <button @click="refreshData" class="refresh-btn" :class="{ 'dark-mode': isDarkMode }">刷新</button>
       </div>
 
       <NoteList
@@ -45,6 +46,7 @@
         @edit-note="handleEditNote"
         @filter-by-tag="handleNoteListTagClick"
         @delete-note="handleDeleteNote"
+        :isDarkMode="isDarkMode"
       />
       <script>
         console.log('InboxView - Sorted Notes:', this.sortedNotes && this.sortedNotes.map(note => ({ id: note.id, type: typeof note.id })));
@@ -53,7 +55,7 @@
       <div class="load-more-trigger" style="height: 1px;"></div>
     </main>
 
-    <div class="floating-action" @click="showInput = true">
+    <div class="floating-action" @click="showInput = true" :class="{ 'dark-mode': isDarkMode }">
       <span>+</span>
     </div>
 
@@ -71,6 +73,7 @@
       @keydown-content="handleKeyDown"
       @apply-suggestion="applySuggestion"
       @submit-note="handleSubmit"
+      :isDarkMode="isDarkMode"
     />
   </div>
 </template>
@@ -85,6 +88,8 @@ export default {
     NoteList,
     NoteEditor,
   },
+  props: ['isDarkMode'],
+  emits: ['toggle-dark-mode'],
   data() {
     return {
       showSidebar: false,
@@ -531,6 +536,14 @@ export default {
   display: flex; /* 使用 Flexbox 布局 */
   min-height: 100vh;
   padding-top: 0; /* 移除顶部内边距 */
+  background-color: #f0f2f5; /* Light background by default */
+  color: #333; /* Dark text by default */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.app-container-modified.dark-mode {
+  background-color: #1e1e1e; /* Dark background */
+  color: #f8f8f2; /* Light text */
 }
 
 /* Sidebar Toggle Button */
@@ -551,6 +564,10 @@ export default {
   transition: all 0.3s ease;
   box-shadow: 2px 0 5px rgba(0,0,0,0.1);
 }
+.app-container-modified.dark-mode .sidebar-toggle {
+  background: #333; /* Dark background for toggle in dark mode */
+  box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+}
 
 .sidebar-toggle .icon {
   color: white;
@@ -568,7 +585,7 @@ export default {
   height: 100vh; /* Full height */
   background: #f8f9fa; /* Light background */
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease; /* 使用 transform 而不是 left */
+  transition: transform 0.3s ease, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; /* 添加过渡效果 */
   transform: translateX(-240px); /* 初始隐藏 */
   z-index: 1000; /* Ensure it's above main content */
   display: flex;
@@ -577,6 +594,12 @@ export default {
   top: 0; /* 紧贴顶部 */
   position: sticky; /* 使用 sticky 定位 */
   left: 0; /* 确保在父容器的左侧 */
+}
+
+.filter-sidebar.dark-mode {
+  background-color: #282a36; /* Dark background */
+  color: #f8f8f2; /* Light text */
+  border-right-color: #44475a;
 }
 
 .filter-sidebar.sidebar-open {
@@ -588,6 +611,9 @@ export default {
   overflow-y: auto; /* Allow scrolling if content overflows */
   flex-grow: 1;
 }
+.sidebar-content.dark-mode {
+  /* 继承父级的 dark-mode 样式，如果需要额外的样式可以添加 */
+}
 
 .sidebar-header {
   display: flex;
@@ -596,18 +622,33 @@ export default {
   margin-bottom: 15px;
   padding-bottom: 10px;
   border-bottom: 1px solid #e0e0e0;
+  transition: border-color 0.3s ease, color 0.3s ease;
+}
+
+.sidebar-header.dark-mode {
+  border-bottom-color: #44475a;
 }
 
 .sidebar-header h3 {
   margin: 0;
   font-size: 1.1em;
   color: #333;
+  transition: color 0.3s ease;
+}
+
+.sidebar-header.dark-mode h3 {
+  color: #f8f8f2;
 }
 
 .sidebar-header .current-filter {
   font-size: 0.9em;
   color: #777;
   margin-left: 5px;
+  transition: color 0.3s ease;
+}
+
+.sidebar-header.dark-mode .current-filter {
+  color: #f8f8f2;
 }
 
 .sidebar-header .close-btn {
@@ -617,14 +658,37 @@ export default {
   cursor: pointer;
   color: #666;
   padding: 0 5px;
+  transition: color 0.3s ease;
 }
+
+.sidebar-header.dark-mode .close-btn {
+  color: #f8f8f2;
+}
+
 .close-btn:hover {
   color: #000;
+}
+
+.sidebar-header .dark-mode-toggle {
+  background: none;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
+  color: #666;
+  padding: 0 5px;
+  transition: color 0.3s ease;
+}
+
+.sidebar-header .dark-mode-toggle:hover {
+  color: #ccc;
 }
 
 /* Tag Filter Styles */
 .tag-filter {
   padding: 10px;
+}
+.tag-filter.dark-mode {
+  /* 继承父级的 dark-mode 样式，如果需要额外的样式可以添加 */
 }
 
 .tag-filter h4 {
@@ -632,11 +696,19 @@ export default {
   margin-bottom: 10px;
   font-size: 1em;
   color: #555;
+  transition: color 0.3s ease;
+}
+
+.tag-filter.dark-mode h4 {
+  color: #f8f8f2;
 }
 
 .tag-list {
   list-style: none;
   padding: 0;
+}
+.tag-list.dark-mode {
+  /* 继承父级的 dark-mode 样式，如果需要额外的样式可以添加 */
 }
 
 .tag-list li {
@@ -647,16 +719,30 @@ export default {
   color: #333;
   cursor: pointer;
   font-size: 0.9em;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.tag-list.dark-mode li {
+  background-color: #44475a;
+  color: #f8f8f2;
 }
 
 .tag-list li:hover {
   background-color: #e0e0e0;
 }
 
+.tag-list.dark-mode li:hover {
+  background-color: #6272a4;
+}
+
 .tag-list li.active {
   background-color: #007bff;
   color: white;
+}
+
+.tag-list.dark-mode li.active {
+  background-color: #bd93f9;
+  color: #282a36;
 }
 
 .clear-filter-btn {
@@ -668,6 +754,11 @@ export default {
   font-size: 0.9em;
   display: block;
   margin-top: 10px;
+  transition: color 0.3s ease;
+}
+
+.clear-filter-btn.dark-mode {
+  color: #bd93f9;
 }
 
 .clear-filter-btn:hover {
@@ -677,9 +768,16 @@ export default {
 /* Main Content Area */
 .main-content {
   flex-grow: 1; /* 占据剩余空间 */
-  transition: margin-left 0.3s ease;
+  transition: margin-left 0.3s ease, background-color 0.3s ease, color 0.3s ease;
   margin-left: 0; /* 默认没有左边距 */
   padding: 20px; /* Add padding */
+  background-color: #fff; /* Light background by default */
+  color: #333; /* Dark text by default */
+}
+
+.main-content.dark-mode {
+  background-color: #1e1e1e; /* Dark background */
+  color: #f8f8f2; /* Light text */
 }
 
 /* Adjust main content margin when sidebar is open */
@@ -696,29 +794,51 @@ export default {
   flex-wrap: wrap; /* Allow wrapping on smaller screens */
   gap: 10px;
 }
+.controls.dark-mode {
+  /* 继承父级的 dark-mode 样式，如果需要额外的样式可以添加 */
+}
 
-/* Sort Options */
-.sort-options button {
+.controls button {
   margin-right: 10px;
   padding: 8px 16px;
   font-size: 14px;
-  transition: all 0.3s;
+  transition: all 0.3s, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
   border: 1px solid #ccc;
   background-color: #fff;
   color: #333;
   border-radius: 4px;
   cursor: pointer;
 }
-.sort-options button:last-child {
+
+/* 更明确地设置按钮的黑暗模式样式 */
+.main-content.dark-mode .controls button {
+  background-color: #44475a;
+  color: #f8f8f2;
+  border-color: #6272a4;
+}
+
+.controls button:last-child {
   margin-right: 0;
 }
-.sort-options button:hover {
+
+.controls button:hover {
   background-color: #f1f1f1;
 }
-.sort-options button.active {
+
+.main-content.dark-mode .controls button:hover {
+  background-color: #6272a4;
+}
+
+.controls button.active {
   background: #007bff;
   color: white;
   border-color: #007bff;
+}
+
+.main-content.dark-mode .controls button.active {
+  background: #bd93f9;
+  color: #282a36;
+  border-color: #bd93f9;
 }
 
 /* Refresh Button Style */
@@ -730,10 +850,20 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.3s ease;
 }
+
+.main-content.dark-mode .refresh-btn {
+  background: #5a6268;
+  color: #f8f8f2;
+}
+
 .refresh-btn:hover {
   background: #5a6268;
+}
+
+.main-content.dark-mode .refresh-btn:hover {
+  background: #6272a4;
 }
 
 /* Floating Action Button */
@@ -753,11 +883,22 @@ export default {
   cursor: pointer;
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
   z-index: 990;
-  transition: all 0.3s ease;
+  transition: all 0.3s ease, background-color 0.3s ease, color 0.3s ease;
 }
+
+.floating-action.dark-mode {
+  background: #bd93f9;
+  color: #282a36;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+
 .floating-action:hover {
   transform: scale(1.05);
   box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+}
+
+.floating-action.dark-mode:hover {
+  box-shadow: 0 6px 12px rgba(0,0,0,0.5);
 }
 
 /* Load More Trigger Style (make it invisible but occupy space) */
@@ -777,9 +918,20 @@ border-radius: 3px;
 padding: 0 2px;
 cursor: pointer;
 text-decoration: underline;
+transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .content-tag:hover {
 background-color: #bbdefb;
+}
+
+.dark-mode .content-tag {
+  color: #8be9fd!important;
+  background-color: #283742;
+
+}
+
+.dark-mode .content-tag:hover {
+  background-color: #435a70;
 }
 </style>
