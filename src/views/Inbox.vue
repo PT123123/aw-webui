@@ -1,7 +1,6 @@
 <template>
   <div>
-    <h1>Inbox 页面</h1>
-    <h2>Inbox页面</h2>
+    <h1>👌</h1>
     <inbox-component></inbox-component>
   </div>
 </template>

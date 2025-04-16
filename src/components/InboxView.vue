@@ -8,6 +8,7 @@
       <div class="sidebar-content">
         <div class="sidebar-header">
           <h3>筛选选项</h3>
+          <span v-if="currentTag" class="current-filter"> (当前筛选: #{{ currentTag }})</span>
           <button @click.stop="handleCloseSidebar" class="close-btn">×</button>
         </div>
         <div class="tag-filter">
@@ -234,14 +235,15 @@ export default {
     },
     async deleteNote(noteId) {
       try {
-        const response = await fetch(`/inbox/notes/${noteId}`, {
-          method: 'DELETE',
+        const response = await fetch(`http://localhost:5601/inbox/notes/del/${noteId}`, { // 修改这里
+          method: 'GET', // 修改这里
         });
 
         if (response.ok) {
           console.log(`Note with id ${noteId} deleted successfully.`);
           // 在前端更新笔记列表
           this.loadNotes(true); // 调用 loadNotes 重新加载数据
+          this.loadAllTags(); // 重新加载所有标签
         } else if (response.status === 404) {
           console.error(`Note with id ${noteId} not found.`);
         } else {
@@ -602,7 +604,13 @@ export default {
   color: #333;
 }
 
-.close-btn {
+.sidebar-header .current-filter {
+  font-size: 0.9em;
+  color: #777;
+  margin-left: 5px;
+}
+
+.sidebar-header .close-btn {
   background: none;
   border: none;
   font-size: 24px;
