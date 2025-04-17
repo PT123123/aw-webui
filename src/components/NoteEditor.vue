@@ -8,10 +8,10 @@
           @input="$emit('input-content', $event.target.value)"
           @keydown="$emit('keydown-content', $event)"
           ref="noteInput"
-          placeholder="输入你的想法..."
+          :placeholder="initialContent ? '' : '输入你的想法...'"
           :disabled="isSubmitting"
           :class="{ 'dark-mode': isDarkMode }"
-        ></textarea>
+        >{{ initialContent }}</textarea>
         <button
           @click="handleSubmit"
           :disabled="!editContent || isSubmitting"
@@ -66,6 +66,14 @@ export default {
       type: Boolean,
       default: true, // 设置默认值为 true，开启默认黑暗模式
     },
+    initialContent: { // 新增 prop 来接收初始内容
+      type: String,
+      default: ''
+    },
+    isCommentMode: {
+      type: Boolean,
+      default: false
+    }
   },
   emits: ['cancel-edit', 'input-content', 'keydown-content', 'apply-suggestion', 'submit-note', 'filter-by-tag'],
   mounted() {

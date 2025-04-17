@@ -22,10 +22,37 @@ export default {
       throw error;
     }
   },
+  async deleteNote(noteId) {
+      try {
+        const response = await fetch(`/inbox/notes/${noteId}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          console.log(`Note with id ${noteId} deleted successfully.`);
+          // 在前端更新笔记列表
+          this.loadNotes(true); // 调用 loadNotes 重新加载数据
+        } else if (response.status === 404) {
+          console.error(`Note with id ${noteId} not found.`);
+        } else {
+          console.error('Failed to delete note:', response.status);
+        }
+      } catch (error) {
+        console.error('Error deleting note:', error);
+      }
+    },
+
 
   async createNote(data) {
     try {
-      const response = await api.post('/inbox/notes', data);
+      // 提取标签并添加到请求数据中
+      const tags = data.content.match(/#([^\s#]+)/g)?.map(tag => tag.substring(1)) || [];
+      const requestData = {
+        ...data,
+        tags: [...new Set([...(data.tags || []), ...tags])] // 合并传入的标签和提取的标签
+      };
+      
+      const response = await axios.post('/inbox/notes', requestData);
       return response;
     } catch (error) {
       console.error('创建笔记失败:', error.response?.data || error.message);
@@ -36,7 +63,14 @@ export default {
   // 新增更新方法
   async updateNote(id, data) {
     try {
-      const response = await api.put(`/inbox/notes/${id}`, data);
+      // 提取标签并添加到请求数据中
+      const tags = data.content.match(/#([^\s#]+)/g)?.map(tag => tag.substring(1)) || [];
+      const requestData = {
+        ...data,
+        tags: [...new Set([...(data.tags || []), ...tags])] // 合并传入的标签和提取的标签
+      };
+      
+      const response = await axios.put(`/inbox/notes/${id}`, requestData);
       return response;
     } catch (error) {
       console.error('更新笔记失败:', error.response?.data || error.message);
@@ -47,11 +81,44 @@ export default {
   // 新增获取所有标签的方法
   async getAllTags() {
     try {
-      const response = await api.get('/inbox/tags/all');
-      return response;
+      const response = await api.get('/inbox/tags');
+      return response.data;
     } catch (error) {
       console.error('获取所有标签失败:', error.response?.data || error.message);
       throw error;
     }
-  }
+  },
+
+  // 新增获取详细标签信息的方法（包含数量和最近修改时间）
+  async getDetailedTags() {
+    try {
+      const response = await api.get('/inbox/tags/detailed');
+      return response.data;
+    } catch (error) {
+      console.error('获取详细标签信息失败:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // 新增获取特定笔记评论的方法
+  async getCommentsForNote(noteId) {
+    try {
+      const response = await api.get(`/inbox/notes/${noteId}/comments`);
+      return response;
+    } catch (error) {
+      console.error(`获取笔记 ${noteId} 的评论失败:`, error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // 新增添加评论的方法
+  async addCommentToNote(noteId, commentData) {
+    try {
+      const response = await api.post(`/inbox/notes/${noteId}/comments`, commentData);
+      return response;
+    } catch (error) {
+      console.error(`添加评论到笔记 ${noteId} 失败:`, error.response?.data || error.message);
+      throw error;
+    }
+  },
 }
