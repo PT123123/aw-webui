@@ -30,4 +30,8 @@ body {
   background-color: #fff;
   border: 1px solid $lightBorderColor;
   border-radius: 5px;
+  width: 100% !important; /* 使用 !important 确保覆盖原有样式 */
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
 }
