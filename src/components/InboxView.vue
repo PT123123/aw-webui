@@ -4,40 +4,35 @@
       <span :class="[styles['icon'], { [styles['open']]: !showSidebar }]">◀</span>
     </div>
 
-    <aside :class="[styles['filter-sidebar'], { [styles['sidebar-open']]: showSidebar, [styles['dark-mode']]: isDarkMode }]">
-      <div :class="[styles['sidebar-content'], { [styles['dark-mode']]: isDarkMode }]">
-        <div :class="[styles['sidebar-header'], { [styles['dark-mode']]: isDarkMode }]">
-          <h3>筛选选项</h3>
-          <span v-if="currentTag" :class="[styles['current-filter'], { [styles['dark-mode']]: isDarkMode }]"> (当前筛选: {{ currentTag }})</span>
-          <button @click.stop="handleCloseSidebar" :class="[styles['close-btn'], { [styles['dark-mode']]: isDarkMode }]">×</button>
-        </div>
-        <div :class="[styles['tag-filter'], { [styles['dark-mode']]: isDarkMode }]">
-          <h4>标签</h4>
-          <ul v-if="allTags && allTags.length > 0" :class="[styles['tag-list'], { [styles['dark-mode']]: isDarkMode }]">
-            <li
-              v-for="tag in allTags"
-              :key="tag"
-              @click="filterByTag(tag)"
-              :class="[{ [styles['active']]: currentTag === tag }, { [styles['dark-mode']]: isDarkMode }]"
-            >
-              {{ tag }}
-            </li>
-          </ul>
-          <p v-else-if="!isLoadingTags" :class="{ [styles['dark-mode']]: isDarkMode }">暂无标签。</p>
-          <p v-else :class="{ [styles['dark-mode']]: isDarkMode }">加载标签中...</p>
-          <button v-if="currentTag" @click="clearTagFilter" :class="[styles['clear-filter-btn'], { [styles['dark-mode']]: isDarkMode }]">清除筛选</button>
-        </div>
-      </div>
-    </aside>
+    <InboxSidebar
+      :showSidebar="showSidebar"
+      :allTags="allTags"
+      :currentTag="currentTag"
+      :isLoadingTags="isLoadingTags"
+      :isDarkMode="isDarkMode"
+      :styles="styles"
+      @filter-by-tag="filterByTag"
+      @clear-tag-filter="clearTagFilter"
+      @close-sidebar="handleCloseSidebar"
+    />
 
     <main :class="[styles['main-content'], { [styles['dark-mode']]: isDarkMode }]">
-      <div :class="[styles['controls'], { [styles['dark-mode']]: isDarkMode }]">
-        <div class="sort-options">
-          <button @click="sortBy('created')" :class="{ [styles['active']]: sortMethod === 'created' }">按创建时间</button>
-          <button @click="sortBy('updated')" :class="{ [styles['active']]: sortMethod === 'updated' }">按修改时间</button>
-        </div>
-        <button @click="refreshData" :class="[styles['refresh-btn'], { [styles['dark-mode']]: isDarkMode }]">刷新</button>
-      </div>
+      <InboxControlsBar
+        :sortMethod="sortMethod"
+        :isDarkMode="isDarkMode"
+        :styles="styles"
+        @sort-by="sortBy"
+        @refresh-data="refreshData"
+      >
+        <template #status-icon>
+          <InboxStatusIcon
+            :statusIconClass="statusIconClass"
+            :statusIconContent="statusIconContent"
+            :inboxStatus="inboxStatus"
+            :styles="styles"
+          />
+        </template>
+      </InboxControlsBar>
 
       <NoteList
         :sortedNotes="sortedNotes"
@@ -47,22 +42,17 @@
         @delete-note="handleDeleteNote"
         :isDarkMode="isDarkMode"
         @show-comment-editor="handleShowCommentEditor" />
-      <div v-if="selectedNoteIdForComments" :class="[styles['comments-section'], { [styles['dark-mode']]: isDarkMode }]">
-        <h4>评论 (笔记 ID: {{ selectedNoteIdForComments }})</h4>
-        <ul v-if="comments.length > 0">
-          <li v-for="comment in comments" :key="comment.id">
-            {{ comment.content }}
-          </li>
-        </ul>
-        <p v-else>暂无评论。</p>
-      </div>
+      <InboxComments
+        :comments="comments"
+        :selectedNoteIdForComments="selectedNoteIdForComments"
+        :isDarkMode="isDarkMode"
+        :styles="styles"
+      />
 
       <div class="load-more-trigger" style="height: 1px;"></div>
     </main>
 
-    <div :class="[styles['floating-action'], { [styles['dark-mode']]: isDarkMode }]" @click="showInput = true">
-      <span>+</span>
-    </div>
+    <InboxFAB :isDarkMode="isDarkMode" :styles="styles" @fab-click="showInput = true" />
 
     <NoteEditor
       v-if="showInput || isAddingComment"
@@ -118,12 +108,22 @@
 import flomoApi from '../api/inbox'; // 确保路径正确
 import NoteList from './NoteList.vue';
 import NoteEditor from './NoteEditor.vue';
-import styles from './InboxView.module.css'; // 导入 CSS 模块
+import InboxStatusIcon from './InboxStatusIcon.vue';
+import InboxSidebar from './InboxSidebar.vue';
+import InboxComments from './InboxComments.vue';
+import InboxControlsBar from './InboxControlsBar.vue';
+import InboxFAB from './InboxFAB.vue';
+import styles from './InboxView.module.css'; // 确保导入 CSS 模块
 
 export default {
   components: {
     NoteList,
     NoteEditor,
+    InboxStatusIcon,
+    InboxSidebar,
+    InboxComments,
+    InboxControlsBar,
+    InboxFAB,
   },
   props: ['isDarkMode'],
   emits: ['toggle-dark-mode'],
@@ -153,9 +153,43 @@ export default {
       comments: [], // 存储评论列表
       styles: styles, // 将导入的 styles 对象添加到 data 中
       detailedTags: [], // 新增：用于存储从后端获取的详细标签信息
+    isDisconnected: false, // 新增：用于追踪网络断开状态
     };
   },
   computed: {
+    // Status icon class based on sync state
+    statusIconClass() {
+      if (this.isDisconnected) return 'status-disconnected';
+      if (this.isSubmitting) return 'status-syncing';
+      if (this.isLoadingMore) return 'status-syncing';
+      if (this.hasMore === false) return 'status-connected';
+      if (this.notes.length === 0) return 'status-unknown';
+      return 'status-connected';
+    },
+    // Status icon content (emoji or icon)
+    statusIconContent() {
+      switch (this.statusIconClass) {
+        case 'status-syncing': return '⏳';
+        case 'status-connected': return '✅';
+        case 'status-disconnected': return '⚠️';
+        case 'status-deleting': return '🗑️';
+        case 'status-error': return '❌';
+        case 'status-unknown': return '❓';
+        default: return '❓';
+      }
+    },
+    // Status tooltip/title
+    inboxStatus() {
+      switch (this.statusIconClass) {
+        case 'status-syncing': return '同步中...';
+        case 'status-connected': return '已连接';
+        case 'status-disconnected': return '已断开';
+        case 'status-deleting': return '正在删除...';
+        case 'status-error': return '同步出错';
+        case 'status-unknown': return '未知状态';
+        default: return '未知状态';
+      }
+    },
     sortedNotes() {
       console.log('当前筛选标签:', this.currentTag);
       console.log('当前筛选标签:', this.currentTag, '笔记标签:', this.note?.tags);
@@ -261,6 +295,8 @@ export default {
       this.loadNotes(true);
     },
     async loadNotes(initialLoad = true) {
+      this.isDisconnected = false; // 每次加载前重置断开状态
+
       if (this.isLoadingMore && !initialLoad) return;
 
       this.isLoadingMore = true;
@@ -288,6 +324,7 @@ export default {
       } catch (error) {
         console.error('加载笔记失败:', error);
         this.hasMore = false;
+        this.isDisconnected = true; // 捕获到网络错误时，设置断开状态
       } finally {
         this.isLoadingMore = false;
       }

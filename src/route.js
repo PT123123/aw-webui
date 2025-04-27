@@ -2,7 +2,6 @@ import Vue from 'vue';
 import VueRouter from 'vue-router';
 
 const Home = () => import('./views/Home.vue');
-const FlomoPage = () => import('./views/Inbox.vue');
 
 // Activity views for desktop
 const Activity = () => import('./views/activity/Activity.vue');
