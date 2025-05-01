@@ -16,97 +16,13 @@ div.sunburst
           div.data(style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden;")
 </template>
 
-<style scoped lang="scss">
-.sunburst {
-  font-family: 'Open Sans', sans-serif;
-  font-size: 12px;
-  font-weight: 400;
-  width: 100%;
-  height: 620px;
-  margin-top: 10px;
-
-  .main {
-    width: 750px;
-    margin-right: auto;
-    margin-left: auto;
-  }
-
-  .sidebar {
-    float: left;
-    height: 0;
-    width: 100px;
-  }
-
-  .sequence {
-    width: 600px;
-    height: 70px;
-  }
-
-  .legend {
-    padding: 10px 0 0 3px;
-  }
-
-  .sequence text,
-  .legend text {
-    font-weight: 600;
-    fill: #fff;
-  }
-
-  .chart {
-    position: relative;
-  }
-
-  .chart path {
-    stroke: #fff;
-  }
-
-  .explanation {
-    position: absolute;
-    top: 260px;
-    left: 305px;
-    width: 140px;
-    text-align: center;
-    color: #666;
-    z-index: 10; // might not be needed
-
-    .base {
-      color: #ddd;
-      font-size: 2em;
-    }
-
-    .hover {
-      .date {
-        font-size: 0.8em;
-      }
-
-      .time {
-        font-size: 1em;
-      }
-
-      .title {
-        font-size: 2em;
-        font-weight: bold;
-      }
-
-      .duration {
-        font-size: 1em;
-      }
-
-      .data {
-        font-size: 1em;
-      }
-    }
-  }
-}
-</style>
-
 <script>
 import sunburst from './sunburst-clock';
 import moment from 'moment';
 import _ from 'lodash';
 
 export default {
-  name: 'aw-sunburst-clock',
+  name: 'AwSunburstClock',
   props: {
     date: { type: String },
     afkBucketId: { type: String },
@@ -226,3 +142,87 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.sunburst {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  width: 100%;
+  height: 620px;
+  margin-top: 10px;
+
+  .main {
+    width: 750px;
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .sidebar {
+    float: left;
+    height: 0;
+    width: 100px;
+  }
+
+  .sequence {
+    width: 600px;
+    height: 70px;
+  }
+
+  .legend {
+    padding: 10px 0 0 3px;
+  }
+
+  .sequence text,
+  .legend text {
+    font-weight: 600;
+    fill: #fff;
+  }
+
+  .chart {
+    position: relative;
+  }
+
+  .chart path {
+    stroke: #fff;
+  }
+
+  .explanation {
+    position: absolute;
+    top: 260px;
+    left: 305px;
+    width: 140px;
+    text-align: center;
+    color: #666;
+    z-index: 10; // might not be needed
+
+    .base {
+      color: #ddd;
+      font-size: 2em;
+    }
+
+    .hover {
+      .date {
+        font-size: 0.8em;
+      }
+
+      .time {
+        font-size: 1em;
+      }
+
+      .title {
+        font-size: 2em;
+        font-weight: bold;
+      }
+
+      .duration {
+        font-size: 1em;
+      }
+
+      .data {
+        font-size: 1em;
+      }
+    }
+  }
+}
+</style>

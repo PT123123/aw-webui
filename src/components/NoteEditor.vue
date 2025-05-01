@@ -1,403 +1,657 @@
 <template>
-  <div v-show="showInput" class="input-modal" :class="{ 'dark-mode': isDarkMode }">
-    <div class="modal-backdrop" @click.self="$emit('cancel-edit')" :class="{ 'dark-mode': isDarkMode }"></div>
-    <div class="modal-content" :class="{ 'dark-mode': isDarkMode }">
+  <div v-if="showInput">
+    <div v-show="false" ref="editorContainer">
+      <!-- 这个容器仅作为引用存在，实际内容会被传送到body下 -->
+      <div ref="modalContent" class="modal-content" :class="{ 'dark-mode': isDarkMode }">
       <div class="editor-wrapper" :class="{ 'dark-mode': isDarkMode }">
-        <textarea
-          v-model="editContent"
-          @input="$emit('input-content', $event.target.value)"
-          @keydown="$emit('keydown-content', $event)"
-          ref="noteInput"
-          :placeholder="initialContent ? '' : '输入你的想法...'"
-          :disabled="isSubmitting"
-          :class="{ 'dark-mode': isDarkMode }"
-        >{{ initialContent }}</textarea>
-        <button
-          @click="handleSubmit"
-          :disabled="!editContent || isSubmitting"
-          class="submit-btn"
-          type="button"
-          :class="{ 'dark-mode': isDarkMode }"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M22 2L11 13L15 22L22 2Z" fill="white"/>
-          </svg>
-        </button>
-        <div class="highlight-layer" ref="highlight" :class="{ 'dark-mode': isDarkMode }">
-          <span
-            v-for="(part, index) in parsedContent"
-            :key="index"
-            :class="{'content-tag': part.isTag, 'dark-mode': isDarkMode}"
-            @click="part.isTag && $emit('filter-by-tag', part.text)"
-          >
-            {{ part.text }}
-          </span>
-        </div>
-      </div>
-
-      <div v-if="suggestions && suggestions.length" class="tag-suggestions" :class="{ 'dark-mode': isDarkMode }">
-        <div
-          v-for="(tag, index) in suggestions"
-          :key="tag.path || index"
-          @click="$emit('apply-suggestion', tag)"
-          :class="{ 'selected': suggestionIndex === index, 'dark-mode': isDarkMode }"
-        >
-          {{ tag.path }}
-        </div>
-      </div>
+          <editor-content ref="tiptapContent" :editor="editor" class="tiptap-editor" tabindex="0" @click.stop="handleEditorClick" />
     </div>
     <div class="modal-actions" :class="{ 'dark-mode': isDarkMode }">
+      <button
+        @click.stop="handleSubmit"
+        class="submit-btn"
+        :class="{ 'dark-mode': isDarkMode, 'is-loading': isSubmitting }"
+        :disabled="isSubmitting"
+      >
+        <span v-if="!isSubmitting">发送</span>
+        <span v-else class="loading-spinner"></span>
+      </button>
       <button @click.stop="handleCancel" class="cancel-btn" :class="{ 'dark-mode': isDarkMode }">取消</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
+import { Editor, EditorContent } from '@tiptap/vue-2'
+import StarterKit from '@tiptap/starter-kit'
+
+// 自定义 #tag 高亮扩展
+import { Mark, mergeAttributes, Extension } from '@tiptap/core'
+import { Plugin } from 'prosemirror-state'
+import { Decoration, DecorationSet } from 'prosemirror-view'
+
+const TagMark = Mark.create({
+  name: 'tagmark',
+  parseHTML() {
+    return [{ tag: 'span[data-tag]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', { class: 'tag-highlight', 'data-tag': 'true' }, 0]
+  },
+  addInputRules() {
+    return [
+      {
+        find: /#([^\s#]+)/g, // 匹配 # 后直到空格或下一个 # 的字符
+        handler: ({ state, range, match }) => {
+          const { tr } = state
+          tr.addMark(range.from + match.index, range.from + match.index + match[0].length, this.type.create())
+        }
+      }
+    ]
+  }
+})
+
+// 自定义光标行高亮扩展
+const CursorHighlight = Extension.create({
+  name: 'cursorHighlight',
+  
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        props: {
+          decorations: state => {
+            const { doc, selection } = state;
+            const decorations = [];
+            
+            const pos = selection.head;
+            const $pos = doc.resolve(pos);
+            const line = $pos.path[1];
+            
+            doc.nodesBetween($pos.start(), $pos.end(), (node, position) => {
+              if (node.isBlock && position <= pos && position + node.nodeSize > pos) {
+                decorations.push(
+                  Decoration.node(position, position + node.nodeSize, {
+                    class: 'cursor-line-highlight'
+                  })
+                );
+                return false;
+              }
+              return true;
+            });
+            
+            return DecorationSet.create(doc, decorations);
+          }
+        }
+      })
+    ];
+  }
+});
+
 export default {
+  components: { EditorContent },
+  created() {
+    console.log('已引入NoteEditor组件，第6次修改 - 调整位置和增加行高亮');
+  },
   props: {
     showInput: Boolean,
-    editingNote: Object,
-    editContent: String,
     isSubmitting: Boolean,
-    suggestions: Array,
-    suggestionIndex: Number,
-    highlightedContent: String,
     isDarkMode: {
       type: Boolean,
-      default: true, // 设置默认值为 true，开启默认黑暗模式
+      default: true,
     },
-    initialContent: { // 新增 prop 来接收初始内容
+    value: {
       type: String,
       default: ''
-    },
-    isCommentMode: {
-      type: Boolean,
-      default: false
     }
   },
-  emits: ['cancel-edit', 'input-content', 'keydown-content', 'apply-suggestion', 'submit-note', 'filter-by-tag'],
-  mounted() {
-    if (this.showInput) {
-      this.$nextTick(() => {
-        this.$refs.noteInput?.focus();
-      });
+  emits: ['cancel-edit', 'submit-note', 'input'],
+  data() {
+    return {
+      editor: null,
+      portalTarget: null,    // 传送门目标元素
+      portalWrapper: null,   // 传送门包装器
+      portalBackdrop: null,  // 背景层
+      portalContent: null    // 内容元素
     }
+  },
+  mounted() {
+    this.editor = new Editor({
+      extensions: [
+        StarterKit, 
+        TagMark,
+        CursorHighlight
+      ],
+      content: this.value || '',
+      onUpdate: ({ editor }) => {
+        this.$emit('input', editor.getHTML());
+      },
+      autofocus: 'end',
+      editorProps: {
+        attributes: {
+          class: 'focus-visible',
+          autocomplete: 'off',
+          autocorrect: 'off',
+          autocapitalize: 'off',
+          spellcheck: 'false'
+        },
+      },
+      onFocus: () => {
+        console.log('编辑器已获得焦点');
+      },
+      onCreate: ({ editor }) => {
+        // 编辑器创建完成后，设置一个短暂延时尝试聚焦
+        setTimeout(() => {
+          editor.commands.focus('end');
+          console.log('编辑器创建完成后自动聚焦');
+        }, 50);
+      }
+    });
+    
+    // 在组件挂载后创建portal
+    this.$nextTick(() => {
+      if (this.showInput) {
+        this.createPortal();
+        // 组件挂载后立即尝试聚焦
+        setTimeout(() => {
+          if (this.editor) {
+        this.editor.commands.focus('end');
+            console.log('组件挂载后立即聚焦');
+          }
+        }, 200);
+      }
+    });
+    
+    // 添加一个额外的初始化聚焦尝试
+    this.activateEditor();
+  },
+  beforeDestroy() {
+    this.editor && this.editor.destroy();
+    // 移除portal
+    this.removePortal();
   },
   watch: {
     showInput(newVal) {
       if (newVal) {
         this.$nextTick(() => {
-          this.$refs.noteInput?.focus();
+          this.createPortal();
+          // 确保在portal创建后聚焦
+          setTimeout(() => {
+            if (this.editor) {
+          this.editor.commands.focus('end');
+            }
+          }, 100);
+          
+          // 使用激活器
+          this.activateEditor();
         });
+      } else {
+        this.removePortal();
+      }
+    },
+    value(newVal) {
+      if (this.editor && newVal !== this.editor.getHTML()) {
+        this.editor.commands.setContent(newVal || '', false);
       }
     }
   },
   methods: {
+    handleEditorClick(e) {
+      e.stopPropagation();
+      if (this.editor) {
+        this.editor.commands.focus();
+      }
+    },
     handleTagClick(e) {
       if (e.target.classList.contains('tag-highlight')) {
         const tag = e.target.textContent;
         this.$emit('filter-by-tag', tag);
       }
     },
-    handleCancel() {
-      console.log('取消按钮点击');
+    handleCancel(e) {
+      // 阻止事件冒泡并阻止默认行为
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      
+      console.log('关闭编辑器');
+      // 直接发出取消事件
       this.$emit('cancel-edit');
     },
-    handleSubmit() {
-      console.log('提交按钮点击 - 开始处理');
-      console.groupCollapsed('NoteEditor提交检查');
-      console.log('内容:', JSON.stringify(this.editContent));
-      console.log('长度:', this.editContent?.length);
-      console.log('提交状态:', this.isSubmitting);
-
-      const isEmpty = !this.editContent || /^\s*$/.test(this.editContent);
-      if (isEmpty || this.isSubmitting) {
-        console.warn('提交被阻止 - 原因:', isEmpty ? '内容为空' : '正在提交中');
-        console.groupEnd();
-        return;
+    handleSubmit(e) {
+      // 阻止事件冒泡并阻止默认行为
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
       }
-
-      console.log('触发submit-note事件，内容:', JSON.stringify(this.editContent));
-      this.$emit('submit-note', this.editContent); // 将内容作为参数传递
-      console.groupEnd();
+      
+      if (!this.editor) return;
+      let html = this.editor.getHTML();
+      const text = this.editor.getText();
+      if (!text.trim() || this.isSubmitting) return;
+      
+      // 更彻底地清理HTML，确保标签渲染正确
+      // 将所有style="color: #bb86fc; font-weight: bold;" data-tag="true"替换为class="tag-highlight"
+      html = html.replace(/<span style="color: #bb86fc; font-weight: bold;" data-tag="true">(.*?)<\/span>/g, 
+                         '<span class="tag-highlight" data-tag="true">$1</span>');
+      
+      // 延迟触发提交事件，确保点击事件已完全处理
+      this.$nextTick(() => {
+      this.$emit('submit-note', html);
+      });
     },
-    parseContent() {
-      const content = this.editContent || '';
-      const parts = [];
-      let currentIndex = 0;
-      const tagRegex = /(#)([^\s#]+)/g;
-      let match;
-      while ((match = tagRegex.exec(content)) !== null) {
-        if (match.index > currentIndex) {
-          parts.push({ text: content.substring(currentIndex, match.index), isTag: false });
+    
+    // 创建传送门
+    createPortal() {
+      // 防止重复创建
+      if (this.portalTarget) return;
+      
+      // 创建传送门容器
+      this.portalWrapper = document.createElement('div');
+      this.portalWrapper.id = 'note-editor-portal-' + Date.now();
+      this.portalWrapper.style.position = 'relative';
+      this.portalWrapper.style.zIndex = '9999999';
+      
+      // 创建背景层
+      this.portalBackdrop = document.createElement('div');
+      Object.assign(this.portalBackdrop.style, {
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        zIndex: '99999',
+        cursor: 'pointer'
+      });
+      
+      // 添加背景层点击事件
+      this.portalBackdrop.addEventListener('click', this.handleCancel);
+      
+      // 添加背景层到传送门容器
+      this.portalWrapper.appendChild(this.portalBackdrop);
+      
+      // 等下一帧确保DOM已经渲染
+      this.$nextTick(() => {
+        // 获取模态内容
+        if (this.$refs.modalContent) {
+          // 创建一个克隆版本
+          this.portalContent = this.$refs.modalContent.cloneNode(true);
+          
+          // 设置内容样式 - 将编辑器放在屏幕下半部分
+          Object.assign(this.portalContent.style, {
+            position: 'fixed',
+            bottom: '5%',
+            left: '50%',
+            top: 'auto',
+            transform: 'translateX(-50%)',
+            zIndex: '999999',
+            backgroundColor: '#333',
+            color: 'white',
+            width: '90%',
+            maxWidth: '600px',
+            minHeight: '250px',
+            maxHeight: '45vh',
+            borderRadius: '10px',
+            boxShadow: '0 0 30px rgba(0,0,0,0.5)',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            border: '3px solid white'
+          });
+          
+          // 确保传送门中的按钮位置与样式一致
+          const modalActions = this.portalContent.querySelector('.modal-actions');
+          if (modalActions) {
+            Object.assign(modalActions.style, {
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: '100%',
+              padding: '0 10%',
+              marginTop: '5px'
+            });
+            
+            const buttons = modalActions.querySelectorAll('button');
+            buttons.forEach(button => {
+              button.style.margin = '0 5%';
+            });
+            
+            const submitBtn = modalActions.querySelector('.submit-btn');
+            if (submitBtn) {
+              submitBtn.style.order = '1';
+              submitBtn.style.flex = '0 0 40%';
+            }
+            
+            const cancelBtn = modalActions.querySelector('.cancel-btn');
+            if (cancelBtn) {
+              cancelBtn.style.order = '2';
+              cancelBtn.style.flex = '0 0 40%';
+            }
+          }
+          
+          // 复制原始内容到传送门容器
+          this.portalWrapper.appendChild(this.portalContent);
+          
+          // 添加传送门到body
+          document.body.appendChild(this.portalWrapper);
+          
+          // 阻止body滚动
+          document.body.style.overflow = 'hidden';
+          
+          // 为portal内容添加事件处理
+          this.setupPortalEvents();
+          
+          // 保存引用
+          this.portalTarget = this.portalWrapper;
+          
+          // 聚焦编辑器 - 添加延迟确保DOM完全渲染
+          setTimeout(() => {
+            if (this.editor) {
+              this.editor.commands.focus('end');
+              console.log('编辑器已自动聚焦');
+              
+              // 尝试直接用DOM API聚焦
+              this.focusEditorDOM();
+            }
+          }, 100);
         }
-        parts.push({ text: match[0], isTag: true });
-        currentIndex = tagRegex.lastIndex;
-      }
-      if (currentIndex < content.length) {
-        parts.push({ text: content.substring(currentIndex), isTag: false });
-      }
-      return parts;
+      });
     },
-  },
-  computed: {
-    parsedContent() {
-      return this.parseContent();
+    
+    // 新增方法：使用DOM API直接聚焦编辑器内容
+    focusEditorDOM() {
+      if (!this.portalContent) return;
+      
+      try {
+        // 尝试找到编辑器内容元素
+        const editorElement = this.portalContent.querySelector('.tiptap-editor');
+        if (editorElement) {
+          console.log('找到编辑器元素，尝试DOM聚焦');
+          
+          // 尝试方式1：使用tabIndex和focus
+          editorElement.tabIndex = 0;
+          editorElement.focus();
+          
+          // 尝试方式2：查找内部的可编辑元素
+          const editableDiv = editorElement.querySelector('[contenteditable="true"]');
+          if (editableDiv) {
+            console.log('找到真正的可编辑元素，尝试直接聚焦');
+            editableDiv.focus();
+            
+            // 尝试方式3：设置光标位置到内容末尾
+            if (document.createRange && window.getSelection) {
+              const range = document.createRange();
+              const selection = window.getSelection();
+              range.selectNodeContents(editableDiv);
+              range.collapse(false); // 折叠到末尾
+              selection.removeAllRanges();
+              selection.addRange(range);
+              console.log('设置光标位置到内容末尾');
+            }
+          }
+        }
+      } catch (e) {
+        console.error('DOM聚焦失败:', e);
+      }
     },
-  },
-};
+    
+    // 移除传送门
+    removePortal() {
+      if (this.portalBackdrop) {
+        this.portalBackdrop.removeEventListener('click', this.handleCancel);
+      }
+      
+      if (this.portalTarget && document.body.contains(this.portalTarget)) {
+        document.body.removeChild(this.portalTarget);
+      }
+      
+      // 恢复body滚动
+      document.body.style.overflow = '';
+      
+      // 重置引用
+      this.portalTarget = null;
+      this.portalWrapper = null;
+      this.portalBackdrop = null;
+      this.portalContent = null;
+    },
+    
+    // 为传送门内容设置事件
+    setupPortalEvents() {
+      if (!this.portalContent) return;
+      
+      // 找到按钮元素
+      const cancelBtn = this.portalContent.querySelector('.cancel-btn');
+      const submitBtn = this.portalContent.querySelector('.submit-btn');
+      const editorContent = this.portalContent.querySelector('.tiptap-editor');
+      
+      // 添加取消事件
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.handleCancel();
+        });
+      }
+      
+      // 添加提交事件
+      if (submitBtn) {
+        submitBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.handleSubmit();
+        });
+      }
+      
+      // 阻止编辑器内容冒泡
+      if (editorContent) {
+        editorContent.addEventListener('click', (e) => {
+          e.stopPropagation();
+          // 点击编辑器内容区域时自动聚焦
+          if (this.editor) {
+            this.editor.commands.focus();
+          }
+          // 尝试DOM API聚焦
+          this.focusEditorDOM();
+        });
+      }
+      
+      // 阻止整个模态框的点击冒泡
+      this.portalContent.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // 点击模态框任何地方都尝试聚焦编辑器
+        if (this.editor) {
+          this.editor.commands.focus('end');
+        }
+        // 尝试DOM API聚焦
+        this.focusEditorDOM();
+      });
+      
+      // 确保在事件设置完成后也能聚焦编辑器
+      setTimeout(() => {
+        if (this.editor) {
+          this.editor.commands.focus('end');
+          console.log('在事件设置后再次聚焦编辑器');
+        }
+        this.focusEditorDOM();
+      }, 150);
+      
+      // 使用多个定时器在不同时间点尝试聚焦，提高成功率
+      setTimeout(() => {
+        if (this.editor) {
+          this.editor.commands.focus('end');
+          console.log('250ms后再次尝试聚焦');
+        }
+        this.focusEditorDOM();
+      }, 250);
+      
+      setTimeout(() => {
+        if (this.editor) {
+          this.editor.commands.focus('end');
+          console.log('500ms后再次尝试聚焦');
+        }
+        this.focusEditorDOM();
+      }, 500);
+    },
+    
+    // 添加聚焦激活器
+    activateEditor() {
+      // 尝试多次激活编辑器
+      const focusTimes = [50, 150, 300, 600, 1000];
+      
+      focusTimes.forEach(time => {
+        setTimeout(() => {
+          if (this.editor) {
+            this.editor.commands.focus('end');
+            console.log(`${time}ms后激活编辑器`);
+          }
+          this.focusEditorDOM();
+        }, time);
+      });
+    }
+  }
+}
 </script>
 
-<style scoped>
-/* Input Modal Styles */
-.input-modal {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: auto;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 1100;
-}
-.input-modal.dark-mode {
-  /* 可以添加整体 modal 的黑暗模式样式，如果需要 */
+<style>
+/* 基本样式重置 */
+* {
+  box-sizing: border-box;
 }
 
-.modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1099;
-}
-.modal-backdrop.dark-mode {
-  background-color: rgba(0, 0, 0, 0.7);
-}
-
-.modal-content {
-  position: relative;
-  background: #000000; /* 设置 modal 内容背景为黑色 */
-  padding: 15px;
-  border-radius: 8px 8px 0 0;
-  box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.2);
-  z-index: 1101;
-  width: 96%; /* 调整为96%宽度 */
-  max-width: 800px; /* 添加最大宽度限制 */
-  margin: 0 auto; /* 居中显示 */
-  color: #f5f5f5; /* 设置默认文字颜色为浅色 */
-}
-.modal-content.dark-mode {
-  background: #000000; /* 确保黑暗模式下也是黑色 */
-  color: #f5f5f5;
-  box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.4);
-}
-
+/* 编辑器内容基本样式 */
 .editor-wrapper {
+  flex: 1;
   position: relative;
-  margin: 0;
-  border: 1px solid #333; /* 深色边框 */
-  border-radius: 4px;
-  overflow: hidden;
-  max-height: 60vh;
-  padding: 4px;
-  width: 100%; /* 确保内部元素填满容器 */
-  background-color: #000000; /* 设置编辑器 wrapper 背景为黑色 */
-}
-.editor-wrapper.dark-mode {
-  border-color: #333;
-  background-color: #000000; /* 确保黑暗模式下也是黑色 */
+  margin-bottom: 15px;
+  background-color: #222;
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 180px;
+  max-height: 35vh;
+  overflow-y: auto;
 }
 
-textarea {
-  width: calc(100% - 8px); /* 考虑内边距调整宽度 */
-  min-height: 120px; /* 适当减小最小高度 */
-  padding: 6px; /* 调整内边距 */
-  margin: 0; /* 移除外边距 */
-  border: none;
-  resize: vertical;
-  background-color: #000000; /* 设置 textarea 背景为黑色 */
-  color: #f5f5f5; /* 设置文本颜色为浅色 */
+.editor-wrapper.dark-mode {
+  background-color: #222;
 }
-textarea.dark-mode {
-  background-color: #000000; /* 确保黑暗模式下也是黑色 */
-  color: #f5f5f5;
+
+.tiptap-editor {
+  height: 100%;
+  width: 100%;
+  outline: none;
+  padding: 10px;
+  font-size: 16px;
+  color: white;
+  background-color: transparent;
+  line-height: 1.5;
+  caret-color: #bb86fc !important; /* 强制显示光标颜色 */
+}
+
+/* 添加闪烁光标样式 */
+.tiptap-editor:focus {
+  caret-color: #bb86fc !important;
+}
+
+/* 确保可编辑区域显示光标 */
+.tiptap-editor [contenteditable="true"] {
+  caret-color: #bb86fc !important;
+  cursor: text !important;
+}
+
+.tiptap-editor.focus-visible {
+  outline: 2px solid #bb86fc;
+  outline-offset: -2px;
+}
+
+/* 光标行高亮 */
+.cursor-line-highlight {
+  background-color: rgba(98, 0, 238, 0.15);
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(98, 0, 238, 0.3);
+  padding: 2px 0;
 }
 
 .submit-btn {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  width: 40px;
-  height: 40px;
-  padding: 0;
+  padding: 8px 20px;
   border-radius: 8px;
-  background: #4CAF50;
-  color: white;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border: none;
+  background-color: #6200ee;
+  color: white;
   cursor: pointer;
+  font-weight: bold;
+  min-width: 80px;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+
+.submit-btn:hover {
+  background-color: #7722ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
 .submit-btn.dark-mode {
-  background: #6200ee;
-  color: #f5f5f5;
+  background-color: #6200ee;
 }
 
-.submit-btn:hover:not(:disabled) {
-  background: #43A047;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-}
-.submit-btn.dark-mode:hover:not(:disabled) {
-  background: #5600c7;
-}
-
-.submit-btn:disabled {
-  background: #81C784;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-.submit-btn.dark-mode:disabled {
-  background: #9e47ff;
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #fff;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-.content-tag {
-  color: #bb86fc !important; /* 修改标签颜色为更深的紫色 */
-  background-color: #292929; /* 深色背景 */
-  border-radius: 3px;
-  padding: 0 2px;
-  cursor: pointer;
-  text-decoration: underline;
-}
-.content-tag:hover {
-  background-color: #3d3d3d;
-}
-.content-tag.dark-mode {
-  color: #bb86fc !important;
-  background-color: #292929;
-}
-.content-tag.dark-mode:hover {
-  background-color: #3d3d3d;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .modal-actions {
   display: flex;
-  justify-content: flex-end;
-  padding-top: 10px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 5px;
+  padding: 0 10%;
+  width: 100%;
 }
-.modal-actions.dark-mode {
-  /* 可以添加 actions 容器的黑暗模式样式，如果需要 */
+
+.modal-actions button {
+  margin: 0 5%;
+}
+
+.submit-btn {
+  order: 1;
+  flex: 0 0 40%;
 }
 
 .cancel-btn {
-  padding: 8px 15px;
-  border: 1px solid #555; /* 深色边框 */
-  border-radius: 4px;
-  background-color: #333; /* 深色背景 */
-  color: #f5f5f5; /* 浅色文字 */
+  order: 2;
+  flex: 0 0 40%;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background-color: #444;
+  color: white;
   cursor: pointer;
   transition: all 0.2s ease;
 }
-.cancel-btn.dark-mode {
-  background-color: #333;
-  color: #f5f5f5;
-  border-color: #555;
-}
 
 .cancel-btn:hover {
-  background-color: #444;
-}
-.cancel-btn.dark-mode:hover {
-  background-color: #444;
+  background-color: #555;
+  transform: translateY(-2px);
 }
 
-.highlight-layer {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  width: calc(100% - 12px);
-  min-height: calc(120px - 12px);
-  padding: 0;
-  margin: 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  color: transparent; /* Hide the actual text */
-  z-index: 2;
-  pointer-events: none; /* Allow clicks to pass through */
-  overflow-y: auto;
-}
-.highlight-layer.dark-mode {
-  /* 颜色不需要修改，因为文本是透明的 */
-}
-
-.highlight-layer .content-tag {
+.tag-highlight {
   color: #bb86fc !important;
-  background-color: #292929;
-  border-radius: 3px;
-  padding: 0 2px;
-  cursor: pointer;
-  text-decoration: underline;
-}
-.highlight-layer.dark-mode .content-tag {
-  color: #bb86fc !important;
-  background-color: #292929;
-}
-.highlight-layer .content-tag:hover {
-  background-color: #3d3d3d;
-}
-.highlight-layer.dark-mode .content-tag:hover {
-  background-color: #3d3d3d;
+  font-weight: bold !important;
 }
 
-.tag-suggestions {
-  background-color: #333; /* 深色背景 */
-  border: 1px solid #555; /* 深色边框 */
-  border-radius: 4px;
-  margin-top: 5px;
-  padding: 8px;
-  position: absolute;
-  left: 0;
-  right: 0;
-  z-index: 1102;
-  color: #f5f5f5; /* 浅色文字 */
-}
-.tag-suggestions.dark-mode {
-  background-color: #333;
-  color: #f5f5f5;
-  border-color: #555;
-}
-
-.tag-suggestions div {
-  padding: 5px 8px;
-  cursor: pointer;
-  border-radius: 3px;
-  color: #f5f5f5; /* 浅色文字 */
-}
-.tag-suggestions.dark-mode div {
-  color: #f5f5f5;
-}
-
-.tag-suggestions div:hover {
-  background-color: #444;
-}
-.tag-suggestions.dark-mode div:hover {
-  background-color: #444;
-}
-
-.tag-suggestions div.selected {
-  background-color: #6200ee;
-  color: #f5f5f5;
-}
-.tag-suggestions.dark-mode div.selected {
-  background-color: #6200ee;
-  color: #f5f5f5;
+/* 确保可编辑区域没有边框和轮廓 */
+[contenteditable="true"] {
+  border: none;
+  outline: none;
 }
 </style>

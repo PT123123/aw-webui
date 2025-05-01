@@ -55,8 +55,6 @@ div
         | Add alert
 </template>
 
-<style scoped lang="scss"></style>
-
 <script lang="ts">
 import _ from 'lodash';
 import moment from 'moment';
@@ -197,3 +195,5 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss"></style>

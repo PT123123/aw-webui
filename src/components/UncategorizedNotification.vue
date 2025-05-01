@@ -23,6 +23,7 @@ import { useSettingsStore } from '~/stores/settings';
 import { seconds_to_duration } from '~/util/time';
 
 export default {
+<<<<<<< HEAD
   name: 'aw-uncategorized-notification',
   props: {
     periodLength: {
@@ -30,6 +31,9 @@ export default {
       default: 'day',
     },
   },
+=======
+  name: 'AwUncategorizedNotification',
+>>>>>>> beafd2c ( 引入 Tiptap 富文本编辑器，替换原有编辑器实现.新增 Cypress 集成测试。)
   computed: {
     ...mapState(useActivityStore, ['uncategorizedDuration']),
     ...mapState(useSettingsStore, ['uncategorizedNotificationData']),

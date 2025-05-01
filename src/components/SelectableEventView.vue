@@ -20,7 +20,7 @@ div
 
 <script lang="ts">
 export default {
-  name: 'aw-selectable-eventview',
+  name: 'AwSelectableEventview',
   props: {
     events: Array,
     event_type: { type: String, default: 'currentwindow' },

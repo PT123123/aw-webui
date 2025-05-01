@@ -23,6 +23,7 @@ div
   event-editor(:event="event", :bucket_id="bucket_id", @save="save", @delete="delete_")
 </template>
 
+<<<<<<< HEAD
 <style scoped lang="scss">
 .stopwatch-entry {
   border-bottom: 1px solid #eee;
@@ -38,6 +39,8 @@ div
 }
 </style>
 
+=======
+>>>>>>> beafd2c ( 引入 Tiptap 富文本编辑器，替换原有编辑器实现.新增 Cypress 集成测试。)
 <script lang="ts">
 import moment from 'moment';
 import 'vue-awesome/icons/edit';
@@ -76,3 +79,9 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+#root:hover {
+  background-color: #eee;
+}
+</style>

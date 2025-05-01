@@ -10,13 +10,6 @@ div
       icon(name="angle-double-up")
 </template>
 
-<style scoped lang="scss">
-.aw-summary-container > svg {
-  border: 1px solid #999;
-  border-radius: 0.5em;
-}
-</style>
-
 <script lang="ts">
 // NOTE: This is just a Vue.js component wrapper for summary.ts
 //       Code should generally go in the framework-independent file.
@@ -26,7 +19,7 @@ import 'vue-awesome/icons/angle-double-down';
 import 'vue-awesome/icons/angle-double-up';
 
 export default {
-  name: 'aw-summary',
+  name: 'AwSummary',
   props: {
     fields: Array,
     namefunc: Function,
@@ -88,3 +81,10 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.aw-summary-container > svg {
+  border: 1px solid #999;
+  border-radius: 0.5em;
+}
+</style>

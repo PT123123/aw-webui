@@ -26,7 +26,7 @@ import { getClient } from '~/util/awclient';
 const BACKOFF_THRESHOLD = 5;
 
 export default {
-  name: 'new-release-notification',
+  name: 'NewReleaseNotification',
   data() {
     return {
       isVisible: false,

@@ -9,6 +9,6 @@ div
 
 <script lang="ts">
 export default {
-  name: 'aw-dev',
+  name: 'AwDev',
 };
 </script>

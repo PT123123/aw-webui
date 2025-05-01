@@ -59,6 +59,7 @@ div
         | Last update: #[time(:datetime="lastUpdate.format()") {{lastUpdate | friendlytime}}]
 </template>
 
+<<<<<<< HEAD
 <style scoped lang="scss">
 .input-time-interval {
   row-gap: 0.5rem;
@@ -83,11 +84,13 @@ div
 }
 </style>
 
+=======
+>>>>>>> beafd2c ( 引入 Tiptap 富文本编辑器，替换原有编辑器实现.新增 Cypress 集成测试。)
 <script lang="ts">
 import moment from 'moment';
 import 'vue-awesome/icons/sync';
 export default {
-  name: 'input-timeinterval',
+  name: 'InputTimeinterval',
   props: {
     defaultDuration: {
       type: Number,
@@ -197,3 +200,11 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.btn-group {
+  input[type='radio']:checked + label {
+    background-color: #aaa;
+  }
+}
+</style>

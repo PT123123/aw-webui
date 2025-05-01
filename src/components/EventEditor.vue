@@ -50,8 +50,6 @@ b-modal(v-if="event && event.id", :id="'edit-modal-' + event.id", ref="eventEdit
         | Save
 </template>
 
-<style lang="scss"></style>
-
 <script lang="ts">
 // This EventEditor can be used to edit events in a specific bucket.
 //
@@ -134,3 +132,5 @@ export default {
   },
 };
 </script>
+
+<style lang="scss"></style>

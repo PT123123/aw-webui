@@ -449,3 +449,27 @@ export default {
   },
 };
 </script>
+
+<style lang="scss">
+div#visualization {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  overflow: visible;
+
+  .vis-timeline {
+    overflow: visible;
+  }
+
+  .timeline-timeline {
+    font-family: sans-serif !important;
+
+    .timeline-panel {
+      box-sizing: border-box;
+    }
+
+    .timeline-item {
+      border-radius: 2px;
+    }
+  }
+}
+</style>

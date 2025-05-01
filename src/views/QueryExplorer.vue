@@ -50,6 +50,7 @@ div
   aw-selectable-eventview(:events="events", :event_type="event_type")
 </template>
 
+<<<<<<< HEAD
 <style scoped lang="scss">
 .saved-query-actions {
   align-items: center;
@@ -58,6 +59,8 @@ div
 }
 </style>
 
+=======
+>>>>>>> beafd2c ( 引入 Tiptap 富文本编辑器，替换原有编辑器实现.新增 Cypress 集成测试。)
 <script lang="ts">
 import 'vue-awesome/icons/trash';
 import moment from 'moment';
@@ -279,3 +282,5 @@ RETURN = sort_by_duration(merged_events);
   },
 };
 </script>
+
+<style scoped lang="scss"></style>

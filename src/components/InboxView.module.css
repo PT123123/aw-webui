@@ -386,14 +386,46 @@
   
   /* 添加以下样式规则 */
   .content-tag {
-    color: #1e88e5 !important;
-    background-color: #e3f2fd;
-    border-radius: 3px;
-    padding: 0 2px;
-    cursor: pointer;
-    text-decoration: underline;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  }
+  background: none;
+  display: inline;
+  vertical-align: baseline;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0;
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.highlight-layer span {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  display: inline;
+  vertical-align: baseline;
+}
+
+.note-content-common {
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.highlight-layer {
+  white-space: normal;
+  word-break: break-all;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
   
   .content-tag:hover {
     background-color: #bbdefb;
@@ -402,7 +434,6 @@
   .dark-mode .content-tag {
     color: #8be9fd!important;
     background-color: #283742;
-  
   }
   
   .dark-mode .content-tag:hover {

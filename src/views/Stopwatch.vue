@@ -53,17 +53,6 @@ div
             @delete="removeTimer", @update="updateTimer", @new="startTimer(e.data.label)")
 </template>
 
-<style scoped lang="scss">
-.btn {
-  margin-right: 0.5em;
-
-  .fa-icon {
-    margin-left: 0;
-    margin-right: 0.5em;
-  }
-}
-</style>
-
 <script lang="ts">
 import _ from 'lodash';
 import moment from 'moment';
@@ -145,3 +134,14 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.btn {
+  margin-right: 0.5em;
+
+  .fa-icon {
+    margin-left: 0;
+    margin-right: 0.5em;
+  }
+}
+</style>

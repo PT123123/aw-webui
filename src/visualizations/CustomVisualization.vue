@@ -8,7 +8,7 @@ import moment from 'moment';
 import { useActivityStore } from '~/stores/activity';
 
 export default {
-  name: 'aw-custom-watcher',
+  name: 'AwCustomWatcher',
   props: {
     visname: String,
     title: String,

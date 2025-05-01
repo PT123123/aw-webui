@@ -48,21 +48,6 @@
           | Vote for new features on the #[a(href="https://forum.activitywatch.net/c/features") forum].
 </template>
 
-<style scoped>
-.radio-options {
-  display: flex;
-  justify-content: space-around;
-}
-
-.option-group {
-  text-align: center;
-}
-
-ul {
-  margin: 0;
-}
-</style>
-
 <script lang="ts">
 import { range } from 'lodash/fp';
 import moment from 'moment';
@@ -77,7 +62,7 @@ const BACKOFF_PERIOD = 7 * 24 * 60 * 60;
 // const BACKOFF_PERIOD = 1;
 
 export default {
-  name: 'user-satisfaction-poll',
+  name: 'UserSatisfactionPoll',
   data() {
     return {
       isPollVisible: false,
@@ -138,3 +123,18 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.radio-options {
+  display: flex;
+  justify-content: space-around;
+}
+
+.option-group {
+  text-align: center;
+}
+
+ul {
+  margin: 0;
+}
+</style>

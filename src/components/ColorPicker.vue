@@ -17,21 +17,6 @@ div
     picker(:value="colors" @input="updateFromPicker" v-if="displayPicker")
 </template>
 
-<style>
-.vc-chrome {
-  position: absolute;
-  top: 0px;
-  z-index: 9;
-}
-.current-color {
-  border-radius: 1em;
-  height: 1.5em;
-  width: 1.5em;
-  background-color: #000;
-  cursor: pointer;
-}
-</style>
-
 <script lang="ts">
 // Based on https://codepen.io/Brownsugar/pen/NaGPKy
 import 'vue-awesome/icons/sync';
@@ -121,3 +106,18 @@ export default {
   },
 };
 </script>
+
+<style>
+.vc-chrome {
+  position: absolute;
+  top: 0px;
+  z-index: 9;
+}
+.current-color {
+  border-radius: 1em;
+  height: 1.5em;
+  width: 1.5em;
+  background-color: #000;
+  cursor: pointer;
+}
+</style>

@@ -1,15 +1,18 @@
 <template>
   <div :class="[styles['app-container-modified'], { [styles['dark-mode']]: isDarkMode }]">
-    <div :class="[styles['sidebar-toggle'], { [styles['dark-mode']]: isDarkMode }]" @click="toggleSidebar">
+    <div
+      :class="[styles['sidebar-toggle'], { [styles['dark-mode']]: isDarkMode }]"
+      @click="toggleSidebar"
+    >
       <span :class="[styles['icon'], { [styles['open']]: !showSidebar }]">◀</span>
     </div>
 
     <InboxSidebar
-      :showSidebar="showSidebar"
-      :allTags="allTags"
-      :currentTag="currentTag"
-      :isLoadingTags="isLoadingTags"
-      :isDarkMode="isDarkMode"
+      :show-sidebar="showSidebar"
+      :all-tags="allTags"
+      :current-tag="currentTag"
+      :is-loading-tags="isLoadingTags"
+      :is-dark-mode="isDarkMode"
       :styles="styles"
       @filter-by-tag="filterByTag"
       @clear-tag-filter="clearTagFilter"
@@ -18,87 +21,88 @@
 
     <main :class="[styles['main-content'], { [styles['dark-mode']]: isDarkMode }]">
       <InboxControlsBar
-        :sortMethod="sortMethod"
-        :isDarkMode="isDarkMode"
+        :sort-method="sortMethod"
+        :is-dark-mode="isDarkMode"
         :styles="styles"
         @sort-by="sortBy"
         @refresh-data="refreshData"
       >
         <template #status-icon>
           <InboxStatusIcon
-            :statusIconClass="statusIconClass"
-            :statusIconContent="statusIconContent"
-            :inboxStatus="inboxStatus"
+            :status-icon-class="statusIconClass"
+            :status-icon-content="statusIconContent"
+            :inbox-status="inboxStatus"
             :styles="styles"
           />
         </template>
       </InboxControlsBar>
 
       <NoteList
-        :sortedNotes="sortedNotes"
-        :isLoadingMore="isLoadingMore"
+        :sorted-notes="sortedNotes"
+        :is-loading-more="isLoadingMore"
         @edit-note="handleEditNote"
         @filter-by-tag="handleNoteListTagClick"
         @delete-note="handleDeleteNote"
-        :isDarkMode="isDarkMode"
-        @show-comment-editor="handleShowCommentEditor" />
+        :is-dark-mode="isDarkMode"
+        @show-comment-editor="handleShowCommentEditor"
+      />
       <InboxComments
         :comments="comments"
-        :selectedNoteIdForComments="selectedNoteIdForComments"
-        :isDarkMode="isDarkMode"
+        :selected-note-id-for-comments="selectedNoteIdForComments"
+        :is-dark-mode="isDarkMode"
         :styles="styles"
       />
 
-      <div class="load-more-trigger" style="height: 1px;"></div>
+      <div
+        class="load-more-trigger"
+        style="height: 1px;"
+      />
     </main>
 
-    <InboxFAB :isDarkMode="isDarkMode" :styles="styles" @fab-click="showInput = true" />
+    <InboxFAB
+      :is-dark-mode="isDarkMode"
+      :styles="styles"
+      @fab-click="showInput = true"
+    />
 
-    <NoteEditor
-      v-if="showInput || isAddingComment"
-      :showInput="showInput || isAddingComment"
-      :editingNote="isAddingComment ? null : editingNote"
-      :editContent="isAddingComment ? commentContent : editContent"
-      :isSubmitting="isSubmitting"
-      :suggestions="suggestions"
-      :suggestionIndex="suggestionIndex"
-      :highlightedContent="highlightedContent"
-      :isCommentMode="isAddingComment"
-      @cancel-edit="isAddingComment ? cancelComment() : cancelEdit()"
-      @input-content="handleInput"
-      @keydown-content="handleKeyDown"
-      @apply-suggestion="applySuggestion"
-      @submit-note="isAddingComment ? submitComment() : handleSubmit($event)"
-      :isDarkMode="isDarkMode"
-    />
-    <NoteEditor
-      v-if="showInput || isAddingComment"
-      :showInput="showInput || isAddingComment"
-      :editingNote="isAddingComment ? null : editingNote"
-      :editContent="isAddingComment ? commentContent : editContent"
-      :isSubmitting="isSubmitting"
-      :suggestions="suggestions"
-      :suggestionIndex="suggestionIndex"
-      :highlightedContent="highlightedContent"
-      :isCommentMode="isAddingComment"
-      @cancel-edit="isAddingComment ? cancelComment() : cancelEdit()"
-      @input-content="handleInput"
-      @keydown-content="handleKeyDown"
-      @apply-suggestion="applySuggestion"
-      @submit-note="isAddingComment ? submitComment() : handleSubmit($event)"
-      :isDarkMode="isDarkMode"
-    />
-    <div v-if="isAddingComment" :class="[styles['comment-editor-section'], { [styles['dark-mode']]: isDarkMode }]">
+    <div
+      v-if="showInput"
+      style="position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:1200;max-width:100vw;width:600px;background:#222;border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,0.18);padding:24px 20px 16px 20px;pointer-events:auto;"
+    >
+      <NoteEditor
+        :show-input="showInput"
+        :is-submitting="isSubmitting"
+        :is-dark-mode="isDarkMode"
+        :value="editContent"
+        @input="editContent = $event"
+        @submit-note="handleSubmit"
+        @cancel-edit="cancelEdit"
+      />
+    </div>
+    <div
+      v-if="isAddingComment"
+      :class="[styles['comment-editor-section'], { [styles['dark-mode']]: isDarkMode }]"
+    >
       <h4>评论笔记 #{{ selectedNoteIdForComments }}</h4>
       <textarea
         v-model="commentContent"
         ref="commentInput"
         placeholder="输入评论内容..."
         :class="{ [styles['dark-mode']]: isDarkMode }"
-      ></textarea>
+      />
       <div :class="styles['comment-actions']">
-        <button @click="submitComment" :class="{ [styles['dark-mode']]: isDarkMode }">提交</button>
-        <button @click="cancelComment" :class="{ [styles['dark-mode']]: isDarkMode }">取消</button>
+        <button
+          @click="submitComment"
+          :class="{ [styles['dark-mode']]: isDarkMode }"
+        >
+          提交
+        </button>
+        <button
+          @click="cancelComment"
+          :class="{ [styles['dark-mode']]: isDarkMode }"
+        >
+          取消
+        </button>
       </div>
     </div>
   </div>
@@ -124,6 +128,17 @@ export default {
     InboxComments,
     InboxControlsBar,
     InboxFAB,
+  },
+  filters: {
+    formatDate(dateStr) {
+      if (!dateStr) return '';
+      try {
+        return new Date(dateStr).toLocaleString();
+      } catch (e) {
+        console.error('日期格式错误:', dateStr, e);
+        return '无效日期';
+      }
+    },
   },
   props: ['isDarkMode'],
   emits: ['toggle-dark-mode'],
@@ -242,20 +257,15 @@ export default {
       }
     },
     editContent(newValue) {
-      console.log('InboxView - editContent 发生变化:', newValue);
+      //console.log('InboxView - editContent 发生变化:', newValue);
       this.handleInput(newValue); // 注意这里传递了 newValue
     },
   },
-  filters: {
-    formatDate(dateStr) {
-      if (!dateStr) return '';
-      try {
-        return new Date(dateStr).toLocaleString();
-      } catch (e) {
-        console.error('日期格式错误:', dateStr, e);
-        return '无效日期';
-      }
-    },
+  mounted() {
+    console.log('[InboxView] 组件已挂载');
+    this.loadNotes(true);
+    this.loadAllTags(); // 改为加载详细标签
+    this.initScrollObserver();
   },
   methods: {
     async handleDeleteNote(noteId) {
@@ -334,21 +344,28 @@ export default {
       this.isLoadingTags = true;
       try {
         const response = await flomoApi.getDetailedTags(); // 改为使用 getDetailedTags
+        console.log('getDetailedTags response:', response);
         this.detailedTags = response || [];
-        console.log('详细标签加载成功:', this.detailedTags);
-        // 格式化标签显示
+        // 兼容 detailedTags 为字符串数组或对象数组
         this.allTags = this.detailedTags.map(item => {
-          const tag = item.tag;
-          const count = item.count;
-          const latestUpdated = item.latest_updated_at ? new Date(item.latest_updated_at) : null;
-          const formattedDate = latestUpdated ?
-            `${String(latestUpdated.getMonth() + 1).padStart(2, '0')}-${String(latestUpdated.getDate()).padStart(2, '0')}` :
-            '--'; // 处理 latest_updated_at 为空的情况
-
-          // 判断标签是否已经以 # 开头，如果是则不重复添加
-          const prefix = tag.startsWith('#') ? '' : '#';
-
-          return `${prefix}${tag}(${count}) ${formattedDate}`;
+          let safeTag = '';
+          let count = 1;
+          let formattedDate = '--';
+          if (typeof item === 'string') {
+            safeTag = item;
+          } else if (item && typeof item === 'object') {
+            // 优先使用 name 字段作为标签名
+            safeTag = typeof item.name === 'string' ? item.name : (typeof item.tag === 'string' ? item.tag : (typeof item.label === 'string' ? item.label : ''));
+            count = item.count || 1;
+            // 兼容 last_modified 或 latest_updated_at 字段
+            const dateStr = item.latest_updated_at || item.last_modified;
+            if (dateStr) {
+              const latestUpdated = new Date(dateStr);
+              formattedDate = `${String(latestUpdated.getMonth() + 1).padStart(2, '0')}-${String(latestUpdated.getDate()).padStart(2, '0')}`;
+            }
+          }
+          const prefix = safeTag.startsWith('#') ? '' : '#';
+          return `${prefix}${safeTag}(${count}) ${formattedDate}`;
         });
         console.log('处理后的 allTags:', this.allTags);
       } catch (error) {
@@ -414,9 +431,12 @@ export default {
           console.log('笔记创建成功:', response?.data);
 
           if (response?.data) {
-            this.notes.unshift({ ...response.data, tags: extractedTags || [] });
-            this.cachedDraftContent = ''; // 成功创建后清空缓存
-            console.log('新笔记创建成功，清空缓存:', this.cachedDraftContent);
+            this.notes.unshift({ ...response.data, tags: response.data.tags || [] });
+            this.cachedDraftContent = '';
+            this.editContent = '';
+            // 新笔记创建成功后同时清空编辑器内容和缓存
+            await this.loadNotes(true);
+            await this.loadAllTags && this.loadAllTags(); // 若有标签刷新方法也一并刷新
           } else {
             await this.loadNotes(true);
           }
@@ -460,7 +480,7 @@ export default {
       });
     },
     handleInput(content) {
-      console.log('InboxView - handleInput 接收到来自编辑器的数据:', content);
+      //console.log('InboxView - handleInput 接收到来自编辑器的数据:', content);
       if (this.isAddingComment) {
         this.commentContent = content;
       } else {
@@ -670,12 +690,6 @@ export default {
       });
       this.scrollObserver = observer;
     },
-  },
-  mounted() {
-    console.log('[InboxView] 组件已挂载');
-    this.loadNotes(true);
-    this.loadAllTags(); // 改为加载详细标签
-    this.initScrollObserver();
   },
 }
 </script>

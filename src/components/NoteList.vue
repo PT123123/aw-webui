@@ -1,44 +1,103 @@
 <template>
-  <div class="note-list" :class="{ 'dark-mode': isDarkMode }" @click="handleTagClick">
-    <div
-      v-for="note in sortedNotes"
-      :key="note.id"
-      class="note-item"
-      :class="{ 'dark-mode': isDarkMode }"
-      @dblclick="$emit('edit-note', note)"
-      ref="noteItems"
-    >
-      <div class="note-content" :class="{ 'dark-mode': isDarkMode }">
-        <div v-html="highlightTagsInContent(note?.content)" class="content-text"></div>
-        <div class="note-actions">
-          <div class="dropdown" :ref="el => setDropdownRef(el, note.id)">
-            <button class="dropdown-toggle" @click.stop="toggleMenu(note.id)">
-              <span style="font-size: 1.2em; cursor: pointer;" :class="{ 'dark-mode': isDarkMode }">⋮</span>
+  <div
+    class="note-list"
+    :class="{ 'dark-mode': isDarkMode }"
+    @click="handleTagClick"
+  >
+    <ul>
+      <li
+        v-for="note in sortedNotes"
+        class="note-item"
+        :key="note.id"
+        :class="{ 'dark-mode': isDarkMode }"
+        @dblclick="$emit('edit-note', note)"
+        ref="noteItems"
+      >
+        <div
+          class="note-content"
+          :class="{ 'dark-mode': isDarkMode }"
+        >
+          <div
+            v-html="highlightTagsInContent(note?.content)"
+            class="content-text"
+          />
+          <div class="note-actions">
+            <div
+              class="dropdown"
+              :ref="el => setDropdownRef(el, note.id)"
+            >
+              <button
+                class="dropdown-toggle"
+                @click.stop="toggleMenu(note.id)"
+              >
+                <span
+                  style="font-size: 1.2em; cursor: pointer;"
+                  :class="{ 'dark-mode': isDarkMode }"
+                >⋮</span>
+              </button>
+              <ul
+                v-if="openMenuId === note.id"
+                class="dropdown-menu memos-dropdown-menu"
+                :class="{ 'dark-mode': isDarkMode }"
+              >
+                <li @click.stop="handleDelete(note.id)">
+                  删除
+                </li>
+              </ul>
+            </div>
+            <button
+              class="comment-btn"
+              @click.stop="handleComment(note)"
+              data-testid="comment-button"
+            >
+              Comment
             </button>
-            <ul v-if="openMenuId === note.id" class="dropdown-menu memos-dropdown-menu" :class="{ 'dark-mode': isDarkMode }">
-              <li @click.stop="handleDelete(note.id)">删除</li>
-            </ul>
           </div>
-          <button class="comment-btn" @click.stop="handleComment(note)" data-testid="comment-button">
-            Comment
-          </button>
         </div>
-      </div>
-      <div class="note-meta" :class="{ 'dark-mode': isDarkMode }">
-        <span>创建: {{ note.created_at | formatDate }}</span>
-        <span v-if="note.updated_at">修改: {{ note.updated_at | formatDate }}</span>
-        <div v-if="note.tags && note.tags.length > 0" class="note-tags">
-          标签:
-          <span v-for="tag in note.tags" :key="tag" class="tag" :class="{ 'dark-mode': isDarkMode }">#{{ tag }}</span>
+        <div
+          class="note-meta"
+          :class="{ 'dark-mode': isDarkMode }"
+        >
+          <span>创建: {{ note.created_at | formatDate }}</span>
+          <span v-if="note.updated_at">修改: {{ note.updated_at | formatDate }}</span>
+          <div
+            v-if="note.tags && note.tags.length > 0"
+            class="note-tags"
+          >
+            标签:
+            <span
+              v-for="tag in note.tags"
+              :key="tag"
+              class="tag"
+              :class="{ 'dark-mode': isDarkMode }"
+            >#{{ tag }}</span>
+          </div>
         </div>
-      </div>
-    </div>
-    <p v-if="sortedNotes.length === 0 && !isLoadingMore" :class="{ 'dark-mode': isDarkMode }">没有笔记显示。</p>
+      </li>
+    </ul>
+    <p
+      v-if="sortedNotes.length === 0 && !isLoadingMore"
+      :class="{ 'dark-mode': isDarkMode }"
+    >
+      没有笔记显示。
+    </p>
   </div>
 </template>
 
 <script>
 export default {
+  filters: {
+    formatDate(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const date = new Date(dateStr);
+        return isNaN(date.getTime()) ? '无效日期' : date.toLocaleString();
+      } catch (e) {
+        console.error('[NoteList] 日期格式错误:', dateStr, e);
+        return '无效日期';
+      }
+    },
+  },
   props: {
     filterTag: String,
     sortedNotes: Array,
@@ -67,18 +126,6 @@ export default {
   },
   beforeUnmount() {
     document.removeEventListener('click', this.handleClickOutside);
-  },
-  filters: {
-    formatDate(dateStr) {
-      if (!dateStr) return '';
-      try {
-        const date = new Date(dateStr);
-        return isNaN(date.getTime()) ? '无效日期' : date.toLocaleString();
-      } catch (e) {
-        console.error('[NoteList] 日期格式错误:', dateStr, e);
-        return '无效日期';
-      }
-    },
   },
   methods: {
     setDropdownRef(el, noteId) {
@@ -163,6 +210,11 @@ export default {
 .note-list {
   margin: 20px 0;
   background-color: #000000;
+  --note-text-color: #222;
+}
+.note-list.dark-mode {
+  background-color: #000000;
+  --note-text-color: #eee;
 }
 .note-list.dark-mode {
   background-color: #000000;
@@ -209,10 +261,50 @@ export default {
   white-space: pre-wrap;
   word-break: break-word;
   margin-right: 10px;
-  color: #333;
+  color: var(--note-text-color);
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.5;
 }
-.content-text.dark-mode {
-  color: #f5f5f5;
+
+.content-tag {
+  background: none;
+  display: inline;
+  vertical-align: baseline;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0;
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.highlight-layer span {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  display: inline;
+  vertical-align: baseline;
+}
+
+.note-content-common {
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.highlight-layer {
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
 }
 
 .note-actions {
@@ -304,16 +396,18 @@ export default {
   border-top: 1px solid #e0e0e0;
   border-radius: 0 0 8px 8px;
   font-size: 0.85em;
-  color: #777;
+  color: var(--note-text-color);
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
 }
+.note-meta span {
+  color: var(--note-text-color);
+}
 .note-meta.dark-mode {
   background-color: #222;
   border-top-color: #333;
-  color: #ccc;
 }
 
 .note-tags {
