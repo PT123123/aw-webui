@@ -32,8 +32,6 @@ div
   aw-selectable-eventview(:events="events", :event_type="event_type")
 </template>
 
-<style scoped lang="scss"></style>
-
 <script lang="ts">
 import moment from 'moment';
 import _ from 'lodash';
@@ -107,3 +105,5 @@ RETURN = sort_by_duration(merged_events);
   },
 };
 </script>
+
+<style scoped lang="scss"></style>

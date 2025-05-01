@@ -47,7 +47,7 @@ import { getClient } from '~/util/awclient';
 import { overlappingEvents } from '~/util/transforms';
 
 export default {
-  name: 'aw-bucket-merge',
+  name: 'AwBucketMerge',
   data() {
     return {
       buckets: [],

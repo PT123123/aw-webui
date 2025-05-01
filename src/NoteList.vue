@@ -1,5 +1,9 @@
 <template>
-  <div class="note-list" :class="{ 'dark-mode': isDarkMode }" @click="handleTagClick">
+  <div
+    class="note-list"
+    :class="{ 'dark-mode': isDarkMode }"
+    @click="handleTagClick"
+  >
     <div
       v-for="note in sortedNotes"
       :key="note.id"
@@ -8,37 +12,90 @@
       @dblclick="$emit('edit-note', note)"
       ref="noteItems"
     >
-      <div class="note-content" :class="{ 'dark-mode': isDarkMode }">
-        <div v-html="highlightTagsInContent(note?.content)" class="content-text"></div>
+      <div
+        class="note-content"
+        :class="{ 'dark-mode': isDarkMode }"
+      >
+        <div
+          v-html="highlightTagsInContent(note?.content)"
+          class="content-text"
+        />
         <div class="note-actions">
-          <div class="dropdown" :ref="el => setDropdownRef(el, note.id)">
-            <button class="dropdown-toggle" @click.stop="toggleMenu(note.id)">
-              <span style="font-size: 1.2em; cursor: pointer;" :class="{ 'dark-mode': isDarkMode }">⋮</span>
+          <div
+            class="dropdown"
+            :ref="el => setDropdownRef(el, note.id)"
+          >
+            <button
+              class="dropdown-toggle"
+              @click.stop="toggleMenu(note.id)"
+            >
+              <span
+                style="font-size: 1.2em; cursor: pointer;"
+                :class="{ 'dark-mode': isDarkMode }"
+              >⋮</span>
             </button>
-            <ul v-if="openMenuId === note.id" class="dropdown-menu memos-dropdown-menu" :class="{ 'dark-mode': isDarkMode }">
-              <li @click.stop="handleDelete(note.id)">删除</li>
+            <ul
+              v-if="openMenuId === note.id"
+              class="dropdown-menu memos-dropdown-menu"
+              :class="{ 'dark-mode': isDarkMode }"
+            >
+              <li @click.stop="handleDelete(note.id)">
+                删除
+              </li>
             </ul>
           </div>
-          <button class="comment-btn" @click.stop="handleComment(note)" data-testid="comment-button">
+          <button
+            class="comment-btn"
+            @click.stop="handleComment(note)"
+            data-testid="comment-button"
+          >
             Comment
           </button>
         </div>
       </div>
-      <div class="note-meta" :class="{ 'dark-mode': isDarkMode }">
+      <div
+        class="note-meta"
+        :class="{ 'dark-mode': isDarkMode }"
+      >
         <span>创建: {{ note.created_at | formatDate }}</span>
         <span v-if="note.updated_at">修改: {{ note.updated_at | formatDate }}</span>
-        <div v-if="note.tags && note.tags.length > 0" class="note-tags">
+        <div
+          v-if="note.tags && note.tags.length > 0"
+          class="note-tags"
+        >
           标签:
-          <span v-for="tag in note.tags" :key="tag" class="tag" :class="{ 'dark-mode': isDarkMode }">#{{ tag }}</span>
+          <span
+            v-for="tag in note.tags"
+            :key="tag"
+            class="tag"
+            :class="{ 'dark-mode': isDarkMode }"
+          >#{{ tag }}</span>
         </div>
       </div>
     </div>
-    <p v-if="sortedNotes.length === 0 && !isLoadingMore" :class="{ 'dark-mode': isDarkMode }">没有笔记显示。</p>
+    <p
+      v-if="sortedNotes.length === 0 && !isLoadingMore"
+      :class="{ 'dark-mode': isDarkMode }"
+    >
+      没有笔记显示。
+    </p>
   </div>
 </template>
 
 <script>
 export default {
+  filters: {
+    formatDate(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const date = new Date(dateStr);
+        return isNaN(date.getTime()) ? '无效日期' : date.toLocaleString();
+      } catch (e) {
+        console.error('[NoteList] 日期格式错误:', dateStr, e);
+        return '无效日期';
+      }
+    },
+  },
   props: {
     filterTag: String,
     sortedNotes: Array,
@@ -67,18 +124,6 @@ export default {
   },
   beforeUnmount() {
     document.removeEventListener('click', this.handleClickOutside);
-  },
-  filters: {
-    formatDate(dateStr) {
-      if (!dateStr) return '';
-      try {
-        const date = new Date(dateStr);
-        return isNaN(date.getTime()) ? '无效日期' : date.toLocaleString();
-      } catch (e) {
-        console.error('[NoteList] 日期格式错误:', dateStr, e);
-        return '无效日期';
-      }
-    },
   },
   methods: {
     setDropdownRef(el, noteId) {

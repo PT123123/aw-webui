@@ -80,7 +80,7 @@ import { overlappingEvents } from '~/util/transforms';
 import _ from 'lodash';
 
 export default {
-  name: 'aw-bucket-merge',
+  name: 'AwBucketMerge',
   data() {
     return {
       buckets: [],

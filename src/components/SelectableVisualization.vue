@@ -87,18 +87,6 @@ div
       aw-score()
 </template>
 
-<style lang="scss">
-.vis-style-dropdown-btn {
-  position: absolute;
-  top: 0.8em;
-  right: 0.8em;
-
-  .btn {
-    border: 0;
-  }
-}
-</style>
-
 <script lang="ts">
 import _ from 'lodash';
 import 'vue-awesome/icons/cog';
@@ -123,7 +111,7 @@ function pick_subname_as_name(c) {
 }
 
 export default {
-  name: 'aw-selectable-vis',
+  name: 'AwSelectableVis',
   props: {
     id: Number,
     type: String,
@@ -330,3 +318,15 @@ export default {
   },
 };
 </script>
+
+<style lang="scss">
+.vis-style-dropdown-btn {
+  position: absolute;
+  top: 0.8em;
+  right: 0.8em;
+
+  .btn {
+    border: 0;
+  }
+}
+</style>

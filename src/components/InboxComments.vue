@@ -1,12 +1,20 @@
 <template>
-  <div v-if="selectedNoteIdForComments" :class="[styles['comments-section'], { [styles['dark-mode']]: isDarkMode }]">
+  <div
+    v-if="selectedNoteIdForComments"
+    :class="[styles['comments-section'], { [styles['dark-mode']]: isDarkMode }]"
+  >
     <h4>评论 (笔记 ID: {{ selectedNoteIdForComments }})</h4>
     <ul v-if="comments.length > 0">
-      <li v-for="comment in comments" :key="comment.id">
+      <li
+        v-for="comment in comments"
+        :key="comment.id"
+      >
         {{ comment.content }}
       </li>
     </ul>
-    <p v-else>暂无评论。</p>
+    <p v-else>
+      暂无评论。
+    </p>
   </div>
 </template>
 

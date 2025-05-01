@@ -23,12 +23,6 @@ div
   event-editor(:event="event", :bucket_id="bucket_id", @save="save", @delete="delete_")
 </template>
 
-<style scoped lang="scss">
-#root:hover {
-  background-color: #eee;
-}
-</style>
-
 <script lang="ts">
 import moment from 'moment';
 import 'vue-awesome/icons/edit';
@@ -67,3 +61,9 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+#root:hover {
+  background-color: #eee;
+}
+</style>

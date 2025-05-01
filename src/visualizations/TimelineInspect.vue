@@ -2,13 +2,6 @@
 div
 </template>
 
-<style scoped lang="scss">
-svg {
-  border: 1px solid #999;
-  border-radius: 0.5em;
-}
-</style>
-
 <script lang="ts">
 // NOTE: This is just a Vue.js component wrapper for timeline.js
 //       Code should generally go in the framework-independent file.
@@ -16,7 +9,7 @@ svg {
 import timeline from './timeline.js';
 
 export default {
-  name: 'aw-timeline',
+  name: 'AwTimeline',
   props: {
     chunks: { type: Object },
     show_afk: { type: Boolean },
@@ -46,3 +39,10 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+svg {
+  border: 1px solid #999;
+  border-radius: 0.5em;
+}
+</style>

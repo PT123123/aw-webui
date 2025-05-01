@@ -37,6 +37,58 @@ div
                 | Edit
 </template>
 
+<script lang="ts">
+import 'vue-awesome/icons/edit';
+import 'vue-awesome/icons/tags';
+import 'vue-awesome/icons/clock';
+import 'vue-awesome/icons/calendar';
+
+import EventEditor from '~/components/EventEditor.vue';
+
+export default {
+  name: 'EventList',
+  components: {
+    'event-editor': EventEditor,
+  },
+  props: {
+    bucket_id: String,
+    events: Array,
+    editable: {
+      default: false,
+      type: Boolean,
+    },
+  },
+  data: function () {
+    return {
+      isListExpanded: false,
+      limit: 100,
+      editableEvent: null,
+    };
+  },
+  computed: {
+    displayed_events: function () {
+      return this.events.slice(0, this.limit);
+    },
+  },
+  methods: {
+    editEvent: function (event) {
+      this.editableEvent = event;
+      this.$nextTick(() => {
+        this.$bvModal.show('edit-modal-' + event.id);
+      });
+    },
+    expandList: function () {
+      this.isListExpanded = !this.isListExpanded;
+      console.log('List should be expanding: ', this.isListExpanded);
+    },
+    removeEvent: function (_event) {
+      // FIXME: Illegal mutation of prop, need to propagate upwards or move into vuex.
+      //this.events = this.events.filter(e => e.id != event.id);
+    },
+  },
+};
+</script>
+
 <style scoped lang="scss">
 $border-color: #ddd;
 
@@ -113,55 +165,3 @@ $border-color: #ddd;
   -webkit-transform: rotateX(180deg); /* Safari and Chrome */
 }
 </style>
-
-<script lang="ts">
-import 'vue-awesome/icons/edit';
-import 'vue-awesome/icons/tags';
-import 'vue-awesome/icons/clock';
-import 'vue-awesome/icons/calendar';
-
-import EventEditor from '~/components/EventEditor.vue';
-
-export default {
-  name: 'EventList',
-  components: {
-    'event-editor': EventEditor,
-  },
-  props: {
-    bucket_id: String,
-    events: Array,
-    editable: {
-      default: false,
-      type: Boolean,
-    },
-  },
-  data: function () {
-    return {
-      isListExpanded: false,
-      limit: 100,
-      editableEvent: null,
-    };
-  },
-  computed: {
-    displayed_events: function () {
-      return this.events.slice(0, this.limit);
-    },
-  },
-  methods: {
-    editEvent: function (event) {
-      this.editableEvent = event;
-      this.$nextTick(() => {
-        this.$bvModal.show('edit-modal-' + event.id);
-      });
-    },
-    expandList: function () {
-      this.isListExpanded = !this.isListExpanded;
-      console.log('List should be expanding: ', this.isListExpanded);
-    },
-    removeEvent: function (_event) {
-      // FIXME: Illegal mutation of prop, need to propagate upwards or move into vuex.
-      //this.events = this.events.filter(e => e.id != event.id);
-    },
-  },
-};
-</script>

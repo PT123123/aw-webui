@@ -1,5 +1,8 @@
 <template>
-  <div :class="[styles['floating-action'], { [styles['dark-mode']]: isDarkMode }]" @click="$emit('fab-click')">
+  <div
+    :class="[styles['floating-action'], { [styles['dark-mode']]: isDarkMode }]"
+    @click="$emit('fab-click')"
+  >
     <span>+</span>
   </div>
 </template>

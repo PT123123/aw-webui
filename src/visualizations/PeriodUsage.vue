@@ -2,17 +2,6 @@
 svg
 </template>
 
-<style scoped lang="scss">
-@import '../style/globals';
-
-svg {
-  width: 100%;
-  height: 40pt;
-  border: 1px solid $lightBorderColor;
-  border-radius: 0.5em;
-}
-</style>
-
 <script lang="ts">
 // NOTE: This is just a Vue.js component wrapper for periodusage.js
 //       Code should generally go in the framework-independent file.
@@ -20,7 +9,7 @@ svg {
 import periodusage from './periodusage.js';
 
 export default {
-  name: 'aw-periodusage',
+  name: 'AwPeriodusage',
   props: {
     periodusage_arr: {
       type: Array,
@@ -42,3 +31,14 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+@import '../style/globals';
+
+svg {
+  width: 100%;
+  height: 40pt;
+  border: 1px solid $lightBorderColor;
+  border-radius: 0.5em;
+}
+</style>

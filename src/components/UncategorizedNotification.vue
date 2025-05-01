@@ -15,7 +15,7 @@ import { mapState } from 'pinia';
 import { useActivityStore } from '~/stores/activity';
 
 export default {
-  name: 'aw-uncategorized-notification',
+  name: 'AwUncategorizedNotification',
   computed: {
     ...mapState(useActivityStore, ['uncategorizedDuration']),
     ratio() {

@@ -1,6 +1,9 @@
 <template>
   <div :class="[styles['app-container-modified'], { [styles['dark-mode']]: isDarkMode }]">
-    <div :class="[styles['sidebar-toggle'], { [styles['dark-mode']]: isDarkMode }]" @click="toggleSidebar">
+    <div
+      :class="[styles['sidebar-toggle'], { [styles['dark-mode']]: isDarkMode }]"
+      @click="toggleSidebar"
+    >
       <span :class="[styles['icon'], { [styles['open']]: !showSidebar }]">◀</span>
     </div>
 
@@ -8,12 +11,23 @@
       <div :class="[styles['sidebar-content'], { [styles['dark-mode']]: isDarkMode }]">
         <div :class="[styles['sidebar-header'], { [styles['dark-mode']]: isDarkMode }]">
           <h3>筛选选项</h3>
-          <span v-if="currentTag" :class="[styles['current-filter'], { [styles['dark-mode']]: isDarkMode }]"> (当前筛选: {{ currentTag }})</span>
-          <button @click.stop="handleCloseSidebar" :class="[styles['close-btn'], { [styles['dark-mode']]: isDarkMode }]">×</button>
+          <span
+            v-if="currentTag"
+            :class="[styles['current-filter'], { [styles['dark-mode']]: isDarkMode }]"
+          > (当前筛选: {{ currentTag }})</span>
+          <button
+            @click.stop="handleCloseSidebar"
+            :class="[styles['close-btn'], { [styles['dark-mode']]: isDarkMode }]"
+          >
+            ×
+          </button>
         </div>
         <div :class="[styles['tag-filter'], { [styles['dark-mode']]: isDarkMode }]">
           <h4>标签</h4>
-          <ul v-if="allTags && allTags.length > 0" :class="[styles['tag-list'], { [styles['dark-mode']]: isDarkMode }]">
+          <ul
+            v-if="allTags && allTags.length > 0"
+            :class="[styles['tag-list'], { [styles['dark-mode']]: isDarkMode }]"
+          >
             <li
               v-for="tag in allTags"
               :key="tag"
@@ -23,9 +37,25 @@
               {{ tag }}
             </li>
           </ul>
-          <p v-else-if="!isLoadingTags" :class="{ [styles['dark-mode']]: isDarkMode }">暂无标签。</p>
-          <p v-else :class="{ [styles['dark-mode']]: isDarkMode }">加载标签中...</p>
-          <button v-if="currentTag" @click="clearTagFilter" :class="[styles['clear-filter-btn'], { [styles['dark-mode']]: isDarkMode }]">清除筛选</button>
+          <p
+            v-else-if="!isLoadingTags"
+            :class="{ [styles['dark-mode']]: isDarkMode }"
+          >
+            暂无标签。
+          </p>
+          <p
+            v-else
+            :class="{ [styles['dark-mode']]: isDarkMode }"
+          >
+            加载标签中...
+          </p>
+          <button
+            v-if="currentTag"
+            @click="clearTagFilter"
+            :class="[styles['clear-filter-btn'], { [styles['dark-mode']]: isDarkMode }]"
+          >
+            清除筛选
+          </button>
         </div>
       </div>
     </aside>
@@ -33,82 +63,108 @@
     <main :class="[styles['main-content'], { [styles['dark-mode']]: isDarkMode }]">
       <div :class="[styles['controls'], { [styles['dark-mode']]: isDarkMode }]">
         <div class="sort-options">
-          <button @click="sortBy('created')" :class="{ [styles['active']]: sortMethod === 'created' }">按创建时间</button>
-          <button @click="sortBy('updated')" :class="{ [styles['active']]: sortMethod === 'updated' }">按修改时间</button>
+          <button
+            @click="sortBy('created')"
+            :class="{ [styles['active']]: sortMethod === 'created' }"
+          >
+            按创建时间
+          </button>
+          <button
+            @click="sortBy('updated')"
+            :class="{ [styles['active']]: sortMethod === 'updated' }"
+          >
+            按修改时间
+          </button>
         </div>
-        <button @click="refreshData" :class="[styles['refresh-btn'], { [styles['dark-mode']]: isDarkMode }]">刷新</button>
+        <button
+          @click="refreshData"
+          :class="[styles['refresh-btn'], { [styles['dark-mode']]: isDarkMode }]"
+        >
+          刷新
+        </button>
       </div>
 
       <NoteList
-        :sortedNotes="sortedNotes"
-        :isLoadingMore="isLoadingMore"
+        :sorted-notes="sortedNotes"
+        :is-loading-more="isLoadingMore"
         @edit-note="handleEditNote"
         @filter-by-tag="handleNoteListTagClick"
         @delete-note="handleDeleteNote"
-        :isDarkMode="isDarkMode"
-        @show-comment-editor="handleShowCommentEditor" />
-      <div v-if="selectedNoteIdForComments" :class="[styles['comments-section'], { [styles['dark-mode']]: isDarkMode }]">
+        :is-dark-mode="isDarkMode"
+        @show-comment-editor="handleShowCommentEditor"
+      />
+      <div
+        v-if="selectedNoteIdForComments"
+        :class="[styles['comments-section'], { [styles['dark-mode']]: isDarkMode }]"
+      >
         <h4>评论 (笔记 ID: {{ selectedNoteIdForComments }})</h4>
         <ul v-if="comments.length > 0">
-          <li v-for="comment in comments" :key="comment.id">
+          <li
+            v-for="comment in comments"
+            :key="comment.id"
+          >
             {{ comment.content }}
           </li>
         </ul>
-        <p v-else>暂无评论。</p>
+        <p v-else>
+          暂无评论。
+        </p>
       </div>
 
-      <div class="load-more-trigger" style="height: 1px;"></div>
+      <div
+        class="load-more-trigger"
+        style="height: 1px;"
+      />
     </main>
 
-    <div :class="[styles['floating-action'], { [styles['dark-mode']]: isDarkMode }]" @click="showInput = true">
+    <div
+      :class="[styles['floating-action'], { [styles['dark-mode']]: isDarkMode }]"
+      @click="showInput = true"
+    >
       <span>+</span>
     </div>
 
     <NoteEditor
       v-if="showInput || isAddingComment"
-      :showInput="showInput || isAddingComment"
-      :editingNote="isAddingComment ? null : editingNote"
-      :editContent="isAddingComment ? commentContent : editContent"
-      :isSubmitting="isSubmitting"
+      :show-input="showInput || isAddingComment"
+      :editing-note="isAddingComment ? null : editingNote"
+      :edit-content="isAddingComment ? commentContent : editContent"
+      :is-submitting="isSubmitting"
       :suggestions="suggestions"
-      :suggestionIndex="suggestionIndex"
-      :highlightedContent="highlightedContent"
-      :isCommentMode="isAddingComment"
+      :suggestion-index="suggestionIndex"
+      :highlighted-content="highlightedContent"
+      :is-comment-mode="isAddingComment"
       @cancel-edit="isAddingComment ? cancelComment() : cancelEdit()"
       @input-content="handleInput"
       @keydown-content="handleKeyDown"
       @apply-suggestion="applySuggestion"
       @submit-note="isAddingComment ? submitComment() : handleSubmit($event)"
-      :isDarkMode="isDarkMode"
+      :is-dark-mode="isDarkMode"
     />
-    <NoteEditor
-      v-if="showInput || isAddingComment"
-      :showInput="showInput || isAddingComment"
-      :editingNote="isAddingComment ? null : editingNote"
-      :editContent="isAddingComment ? commentContent : editContent"
-      :isSubmitting="isSubmitting"
-      :suggestions="suggestions"
-      :suggestionIndex="suggestionIndex"
-      :highlightedContent="highlightedContent"
-      :isCommentMode="isAddingComment"
-      @cancel-edit="isAddingComment ? cancelComment() : cancelEdit()"
-      @input-content="handleInput"
-      @keydown-content="handleKeyDown"
-      @apply-suggestion="applySuggestion"
-      @submit-note="isAddingComment ? submitComment() : handleSubmit($event)"
-      :isDarkMode="isDarkMode"
-    />
-    <div v-if="isAddingComment" :class="[styles['comment-editor-section'], { [styles['dark-mode']]: isDarkMode }]">
+    <div
+      v-if="isAddingComment"
+      :class="[styles['comment-editor-section'], { [styles['dark-mode']]: isDarkMode }]"
+    >
       <h4>评论笔记 #{{ selectedNoteIdForComments }}</h4>
       <textarea
         v-model="commentContent"
         ref="commentInput"
         placeholder="输入评论内容..."
         :class="{ [styles['dark-mode']]: isDarkMode }"
-      ></textarea>
+      />
       <div :class="styles['comment-actions']">
-        <button @click="submitComment" :class="{ [styles['dark-mode']]: isDarkMode }">提交</button>
-        <button @click="cancelComment" :class="{ [styles['dark-mode']]: isDarkMode }">取消</button>
+        <button
+          @click="submitComment"
+          :class="{ [styles['dark-mode']]: isDarkMode }"
+        >
+          提交
+        </button>
+        <button
+          @click="cancelComment"
+          :class="{ [styles['dark-mode']]: isDarkMode }"
+        >
+          取消
+        </button>
       </div>
     </div>
   </div>
@@ -181,24 +237,14 @@ export default {
   },
   watch: {
     showInput(newVal) {
-      console.log('弹窗状态改变:', newVal, '，当前是否在编辑现有笔记:', !!this.editingNote);
       if (newVal && !this.editingNote) {
-        // 如果是新建笔记，恢复缓存的草稿内容
-        console.log('新建笔记弹窗打开，尝试恢复缓存:', this.cachedDraftContent);
         this.editContent = this.cachedDraftContent;
-        console.log('恢复后的 editContent:', this.editContent);
       } else if (newVal && this.editingNote) {
-        // 如果是编辑现有笔记，加载笔记内容
-        console.log('编辑现有笔记弹窗打开，加载笔记内容:', this.editingNote.content);
         this.editContent = this.editingNote.content || '';
-        this.cachedDraftContent = ''; // 编辑现有笔记时清空缓存
-        console.log('编辑现有笔记，清空缓存:', this.cachedDraftContent);
+        this.cachedDraftContent = ''; 
       } else {
-        // 如果弹窗关闭且不是在编辑现有笔记，缓存当前内容
         if (!this.editingNote) {
-          console.log('新建笔记弹窗关闭，缓存当前内容:', this.editContent);
           this.cachedDraftContent = this.editContent;
-          console.log('缓存后的 cachedDraftContent:', this.cachedDraftContent);
         }
       }
       if (newVal) {
@@ -208,140 +254,26 @@ export default {
       }
     },
     editContent(newValue) {
-      console.log('InboxView - editContent 发生变化:', newValue);
-      this.handleInput(newValue); // 注意这里传递了 newValue
+      this.handleInput(newValue); 
     },
   },
-  filters: {
-    formatDate(dateStr) {
-      if (!dateStr) return '';
-      try {
-        return new Date(dateStr).toLocaleString();
-      } catch (e) {
-        console.error('日期格式错误:', dateStr, e);
-        return '无效日期';
-      }
-    },
+  created() {
+    console.log('[InboxView] 组件被导入');
   },
+  mounted() {
+    console.log('[InboxView] 组件已挂载');
+    this.loadNotes(true);
+    this.loadAllTags(); // 改为加载详细标签
+    this.initScrollObserver();
+  },
+  // ...
   methods: {
-    async handleDeleteNote(noteId) {
-      console.log('准备删除笔记:', noteId);
-      try {
-        const success = await flomoApi.deleteNote(noteId);
-        if (success) {
-          console.log('笔记删除成功');
-          // 从本地笔记列表中移除已删除的笔记
-          this.notes = this.notes.filter(note => note.id !== noteId);
-        } else {
-          console.warn('笔记删除失败: 未找到该笔记');
-        }
-      } catch (error) {
-        console.error('删除笔记时出错:', error);
-      }
-    },
-    toggleSidebar() {
-      this.showSidebar = !this.showSidebar;
-    },
-    handleCloseSidebar() {
-      this.showSidebar = false;
-    },
-    filterByTag(formattedTag) {
-      // 从格式化后的标签字符串中提取标签名称
-      const tagName = formattedTag.split('(')[0].substring(1);
-      if (this.currentTag === tagName) {
-        this.currentTag = null;
-      } else {
-        this.currentTag = tagName;
-      }
-      console.log('设置 currentTag 为:', this.currentTag);
-      this.loadNotes(true);
-    },
-    clearTagFilter() {
-      this.currentTag = null;
-      this.loadNotes(true);
-    },
-    async loadNotes(initialLoad = true) {
-      if (this.isLoadingMore && !initialLoad) return;
-
-      this.isLoadingMore = true;
-      try {
-        if (initialLoad) {
-          this.notes = [];
-          this.currentOffset = 0;
-          this.hasMore = true;
-        }
-
-        const response = await flomoApi.getNotes(50, this.currentOffset, this.currentTag);
-        const newNotes = response?.data || [];
-
-        if (newNotes.length > 0) {
-          const processedNotes = newNotes.map(note => ({
-            ...note,
-            tags: note.tags || []
-          }));
-          this.notes = initialLoad ? processedNotes : [...this.notes, ...processedNotes];
-          this.currentOffset += newNotes.length;
-          this.hasMore = newNotes.length === 50;
-        } else {
-          this.hasMore = false;
-        }
-      } catch (error) {
-        console.error('加载笔记失败:', error);
-        this.hasMore = false;
-      } finally {
-        this.isLoadingMore = false;
-      }
-    },
-
-    async loadAllTags() {
-      this.isLoadingTags = true;
-      try {
-        const response = await flomoApi.getDetailedTags(); // 改为使用 getDetailedTags
-        this.detailedTags = response || [];
-        console.log('详细标签加载成功:', this.detailedTags);
-        // 格式化标签显示
-        this.allTags = this.detailedTags.map(item => {
-          const tag = item.tag;
-          const count = item.count;
-          const latestUpdated = item.latest_updated_at ? new Date(item.latest_updated_at) : null;
-          const formattedDate = latestUpdated ?
-            `${String(latestUpdated.getMonth() + 1).padStart(2, '0')}-${String(latestUpdated.getDate()).padStart(2, '0')}` :
-            '--'; // 处理 latest_updated_at 为空的情况
-
-          // 判断标签是否已经以 # 开头，如果是则不重复添加
-          const prefix = tag.startsWith('#') ? '' : '#';
-
-          return `${prefix}${tag}(${count}) ${formattedDate}`;
-        });
-        console.log('处理后的 allTags:', this.allTags);
-      } catch (error) {
-        console.error('加载详细标签失败:', error);
-        this.detailedTags = [];
-        this.allTags = []; // 出错时也清空 allTags
-      } finally {
-        this.isLoadingTags = false;
-      }
-    },
-
-    // 移除 processTags 方法，因为现在由后端处理
-
-    refreshData() {
-      console.groupCollapsed('[InboxView] 手动刷新数据 - 开始');
-      try {
-        this.loadNotes(true);
-        this.loadAllTags(); // 同时刷新标签数据
-      } finally {
-        console.groupEnd();
-      }
-    },
     handleEditNote(note) {
-      console.log('准备编辑笔记:', note.id);
-      this.editingNote = { ...note }; // Use spread for a shallow copy
+      this.editingNote = { ...note }; 
       this.editContent = note.content || '';
       this.showInput = true;
     },
     async handleSubmit(contentFromEditor) {
-      console.log('InboxView - handleSubmit received content:', JSON.stringify(contentFromEditor));
       if (!contentFromEditor || /^\s*$/.test(contentFromEditor)) {
         console.warn('提交被阻止 - 原因: 内容为空或仅包含空白字符');
         return;
@@ -376,10 +308,9 @@ export default {
           console.log('笔记创建成功:', response?.data);
 
           if (response?.data) {
-            this.notes.unshift({ ...response.data, tags: this.extractTagsFromContent(noteData) || [] });
-            this.cachedDraftContent = ''; // 成功创建后清空缓存
-            console.log('新笔记创建成功，清空缓存:', this.cachedDraftContent);
-          } else {
+        this.notes.unshift({ ...response.data, tags: response.data.tags || [] });
+        this.cachedDraftContent = ''; // 成功创建后清空缓存
+      } else {
             await this.loadNotes(true);
           }
         }
@@ -422,7 +353,7 @@ export default {
       });
     },
     handleInput(content) {
-      console.log('InboxView - handleInput 接收到来自编辑器的数据:', content);
+      
       if (this.isAddingComment) {
         this.commentContent = content;
       } else {
@@ -629,12 +560,6 @@ export default {
       });
       this.scrollObserver = observer;
     },
-  },
-  mounted() {
-    console.log('[InboxView] 组件已挂载');
-    this.loadNotes(true);
-    this.loadAllTags(); // 改为加载详细标签
-    this.initScrollObserver();
   },
 }
 </script>

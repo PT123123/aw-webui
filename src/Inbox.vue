@@ -1,6 +1,12 @@
 <template>
-  <div id="app" :class="{ 'dark-mode': isDarkMode }">
-    <inbox-component :isDarkMode="isDarkMode" @toggle-dark-mode="toggleDarkMode"></inbox-component>
+  <div
+    id="app"
+    :class="{ 'dark-mode': isDarkMode }"
+  >
+    <inbox-component
+      :is-dark-mode="isDarkMode"
+      @toggle-dark-mode="toggleDarkMode"
+    />
   </div>
 </template>
 
@@ -21,13 +27,16 @@ export default {
       document.body.classList.toggle('dark-mode', newVal);
     }
   },
+  created() {
+    console.log('[Inbox父组件] 组件被导入');
+  },
+  mounted() {
+    document.body.classList.toggle('dark-mode', this.isDarkMode);
+  },
   methods: {
     toggleDarkMode() {
       this.isDarkMode = !this.isDarkMode;
     }
-  },
-  mounted() {
-    document.body.classList.toggle('dark-mode', this.isDarkMode);
   }
 }
 </script>

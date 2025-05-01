@@ -46,19 +46,11 @@ div
         | Last update: #[time(:datetime="lastUpdate.format()") {{lastUpdate | friendlytime}}]
 </template>
 
-<style scoped lang="scss">
-.btn-group {
-  input[type='radio']:checked + label {
-    background-color: #aaa;
-  }
-}
-</style>
-
 <script lang="ts">
 import moment from 'moment';
 import 'vue-awesome/icons/sync';
 export default {
-  name: 'input-timeinterval',
+  name: 'InputTimeinterval',
   props: {
     defaultDuration: {
       type: Number,
@@ -157,3 +149,11 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.btn-group {
+  input[type='radio']:checked + label {
+    background-color: #aaa;
+  }
+}
+</style>

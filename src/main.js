@@ -11,7 +11,7 @@ Vue.use(BootstrapVue);
 
 import { Datetime } from 'vue-datetime';
 import 'vue-datetime/dist/vue-datetime.css';
-Vue.component('datetime', Datetime);
+Vue.component('Datetime', Datetime);
 
 // Load the Varela Round font
 import 'typeface-varela-round';
@@ -29,38 +29,38 @@ import router from './route.js';
 import pinia from './stores';
 
 // Register Font Awesome icon component
-Vue.component('icon', () => import('vue-awesome/components/Icon.vue'));
+Vue.component('Icon', () => import('vue-awesome/components/Icon.vue'));
 
 // General components
-Vue.component('error-boundary', () => import('./components/ErrorBoundary.vue'));
-Vue.component('input-timeinterval', () => import('./components/InputTimeInterval.vue'));
-Vue.component('aw-header', () => import('./components/Header.vue'));
-Vue.component('aw-footer', () => import('./components/Footer.vue'));
-Vue.component('aw-devonly', () => import('./components/DevOnly.vue'));
-Vue.component('aw-selectable-vis', () => import('./components/SelectableVisualization.vue'));
-Vue.component('aw-selectable-eventview', () => import('./components/SelectableEventView.vue'));
-Vue.component('new-release-notification', () => import('./components/NewReleaseNotification.vue'));
-Vue.component('user-satisfaction-poll', () => import('./components/UserSatisfactionPoll.vue'));
-Vue.component('aw-query-options', () => import('./components/QueryOptions.vue'));
-Vue.component('aw-select-categories', () => import('./components/SelectCategories.vue'));
-Vue.component('aw-select-categories-or-pattern', () =>
+Vue.component('ErrorBoundary', () => import('./components/ErrorBoundary.vue'));
+Vue.component('InputTimeinterval', () => import('./components/InputTimeInterval.vue'));
+Vue.component('AwHeader', () => import('./components/Header.vue'));
+Vue.component('AwFooter', () => import('./components/Footer.vue'));
+Vue.component('AwDevonly', () => import('./components/DevOnly.vue'));
+Vue.component('AwSelectableVis', () => import('./components/SelectableVisualization.vue'));
+Vue.component('AwSelectableEventview', () => import('./components/SelectableEventView.vue'));
+Vue.component('NewReleaseNotification', () => import('./components/NewReleaseNotification.vue'));
+Vue.component('UserSatisfactionPoll', () => import('./components/UserSatisfactionPoll.vue'));
+Vue.component('AwQueryOptions', () => import('./components/QueryOptions.vue'));
+Vue.component('AwSelectCategories', () => import('./components/SelectCategories.vue'));
+Vue.component('AwSelectCategoriesOrPattern', () =>
   import('./components/SelectCategoriesOrPattern.vue')
 );
 
 // Visualization components
-Vue.component('aw-summary', () => import('./visualizations/Summary.vue'));
-Vue.component('aw-periodusage', () => import('./visualizations/PeriodUsage.vue'));
-Vue.component('aw-eventlist', () => import('./visualizations/EventList.vue'));
-Vue.component('aw-sunburst-categories', () => import('./visualizations/SunburstCategories.vue'));
-Vue.component('aw-sunburst-clock', () => import('./visualizations/SunburstClock.vue'));
-Vue.component('aw-timeline-inspect', () => import('./visualizations/TimelineInspect.vue'));
-Vue.component('aw-timeline', () => import('./visualizations/TimelineSimple.vue'));
-Vue.component('vis-timeline', () => import('./visualizations/VisTimeline.vue'));
-Vue.component('aw-categorytree', () => import('./visualizations/CategoryTree.vue'));
-Vue.component('aw-timeline-barchart', () => import('./visualizations/TimelineBarChart.vue'));
-Vue.component('aw-calendar', () => import('./visualizations/Calendar.vue'));
-Vue.component('aw-custom-vis', () => import('./visualizations/CustomVisualization.vue'));
-Vue.component('aw-score', () => import('./visualizations/Score.vue'));
+Vue.component('AwSummary', () => import('./visualizations/Summary.vue'));
+Vue.component('AwPeriodusage', () => import('./visualizations/PeriodUsage.vue'));
+Vue.component('AwEventlist', () => import('./visualizations/EventList.vue'));
+Vue.component('AwSunburstCategories', () => import('./visualizations/SunburstCategories.vue'));
+Vue.component('AwSunburstClock', () => import('./visualizations/SunburstClock.vue'));
+Vue.component('AwTimelineInspect', () => import('./visualizations/TimelineInspect.vue'));
+Vue.component('AwTimeline', () => import('./visualizations/TimelineSimple.vue'));
+Vue.component('VisTimeline', () => import('./visualizations/VisTimeline.vue'));
+Vue.component('AwCategorytree', () => import('./visualizations/CategoryTree.vue'));
+Vue.component('AwTimelineBarchart', () => import('./visualizations/TimelineBarChart.vue'));
+Vue.component('AwCalendar', () => import('./visualizations/Calendar.vue'));
+Vue.component('AwCustomVis', () => import('./visualizations/CustomVisualization.vue'));
+Vue.component('AwScore', () => import('./visualizations/Score.vue'));
 
 // A mixin to make async method errors propagate
 import asyncErrorCapturedMixin from './mixins/asyncErrorCaptured.js';
