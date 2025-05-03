@@ -156,15 +156,11 @@ export default {
         // 组件挂载后立即尝试聚焦
         setTimeout(() => {
           if (this.editor) {
-        this.editor.commands.focus('end');
-            console.log('组件挂载后立即聚焦');
+            this.editor.commands.focus('end');
           }
         }, 200);
       }
     });
-    
-    // 添加一个额外的初始化聚焦尝试
-    this.activateEditor();
   },
   beforeDestroy() {
     this.editor && this.editor.destroy();
@@ -227,20 +223,45 @@ export default {
         e.preventDefault();
       }
       
-      if (!this.editor) return;
-      let html = this.editor.getHTML();
-      const text = this.editor.getText();
-      if (!text.trim() || this.isSubmitting) return;
+      if (!this.editor) {
+        console.warn('编辑器实例不存在');
+        return;
+      }
+
+      // 获取编辑器内容
+      const domContent = this.portalContent?.querySelector('.tiptap-editor');
+      if (!domContent) {
+        console.warn('未找到编辑器DOM');
+        return;
+      }
+      
+      // 使用DOM内容作为实际内容检查
+      const actualContent = domContent.textContent.trim();
+      if (!actualContent) {
+        console.warn('内容为空');
+        return;
+      }
+      
+      // 获取HTML内容并清理
+      let html = domContent.innerHTML;
+      html = html.replace(/<span style="color: #bb86fc; font-weight: bold;" data-tag="true">(.*?)<\/span>/g, 
+                         '<span class="tag-highlight" data-tag="true">$1</span>');
+
+      
+      if (this.isSubmitting) {
+        console.warn('提交终止：正在提交中');
+        console.groupEnd();
+        return;
+      }
       
       // 更彻底地清理HTML，确保标签渲染正确
-      // 将所有style="color: #bb86fc; font-weight: bold;" data-tag="true"替换为class="tag-highlight"
       html = html.replace(/<span style="color: #bb86fc; font-weight: bold;" data-tag="true">(.*?)<\/span>/g, 
                          '<span class="tag-highlight" data-tag="true">$1</span>');
       
-      // 延迟触发提交事件，确保点击事件已完全处理
-      this.$nextTick(() => {
+      console.log('准备发送submit-note事件');
+      // 立即触发提交事件
       this.$emit('submit-note', html);
-      });
+      console.log('submit-note事件已发送');
     },
     
     // 创建传送门
@@ -366,35 +387,27 @@ export default {
       if (!this.portalContent) return;
       
       try {
-        // 尝试找到编辑器内容元素
         const editorElement = this.portalContent.querySelector('.tiptap-editor');
         if (editorElement) {
-          console.log('找到编辑器元素，尝试DOM聚焦');
-          
-          // 尝试方式1：使用tabIndex和focus
           editorElement.tabIndex = 0;
           editorElement.focus();
           
-          // 尝试方式2：查找内部的可编辑元素
           const editableDiv = editorElement.querySelector('[contenteditable="true"]');
           if (editableDiv) {
-            console.log('找到真正的可编辑元素，尝试直接聚焦');
             editableDiv.focus();
             
-            // 尝试方式3：设置光标位置到内容末尾
             if (document.createRange && window.getSelection) {
               const range = document.createRange();
               const selection = window.getSelection();
               range.selectNodeContents(editableDiv);
-              range.collapse(false); // 折叠到末尾
+              range.collapse(false);
               selection.removeAllRanges();
               selection.addRange(range);
-              console.log('设置光标位置到内容末尾');
             }
           }
         }
       } catch (e) {
-        console.error('DOM聚焦失败:', e);
+        console.error('编辑器聚焦失败:', e);
       }
     },
     
@@ -496,16 +509,15 @@ export default {
     
     // 添加聚焦激活器
     activateEditor() {
-      // 尝试多次激活编辑器
-      const focusTimes = [50, 150, 300, 600, 1000];
+      // 尝试两次激活编辑器
+      const focusTimes = [100, 300];
       
       focusTimes.forEach(time => {
         setTimeout(() => {
           if (this.editor) {
             this.editor.commands.focus('end');
-            console.log(`${time}ms后激活编辑器`);
+            this.focusEditorDOM();
           }
-          this.focusEditorDOM();
         }, time);
       });
     }
