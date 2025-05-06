@@ -151,8 +151,10 @@ export default {
       if (this.editor && newVal !== this.editor.getHTML()) {
         console.log('watch: value changed. Setting editor content with newVal.');
         this.editor.commands.setContent(newVal || '', false);
-         // 更新内容后尝试重新聚焦，保持用户体验
-         setTimeout(() => this.editor.commands.focus('end'), 50);
+        // 只在初始化空编辑器内容时聚焦，避免在用户编辑过程中重新聚焦导致光标位置丢失
+        if (!newVal || newVal === '') {
+          setTimeout(() => this.editor.commands.focus('end'), 50);
+        }
       } else if (this.editor) {
          console.log('watch: value changed, but editor content is already the same or newVal is empty.');
       } else {
@@ -388,16 +390,7 @@ export default {
         
         console.log('createPortal: Portal DOM 创建完成，DOM 元素:', this.portalEditorElement);
         
-        // 聚焦编辑器 - 添加延迟确保DOM完全渲染
-        setTimeout(() => {
-          if (this.editor) {
-            this.editor.commands.focus('end');
-            console.log('编辑器已自动聚焦');
-            
-            // 尝试直接用DOM API聚焦
-            this.focusEditorDOM();
-          }
-        }, 100);
+        // 不在此处聚焦，而是依靠activateEditor统一处理
       });
     },
     
@@ -477,22 +470,12 @@ export default {
             console.log('Portal Editor onCreate: 编辑器实例已创建并绑定到 Portal DOM.', this.editor);
             // 创建完成后，设置 Portal 中的事件监听
             this.setupPortalEvents();
-            // 尝试聚焦
-            setTimeout(() => {
-              if (editor && editor.commands) {
-                 editor.commands.focus('end');
-                 console.log('Portal Editor onCreate: 延迟聚焦尝试 (50ms)');
-              } else {
-                 console.log('Portal Editor onCreate: Editor或commands未准备好，无法聚焦');
-              }
-            }, 50);
           }
         });
 
         console.log('initializeEditorInPortal: Tiptap Editor 实例初始化完成并绑定到 Portal.');
 
-        // 触发多次聚焦尝试，确保在不同环境下都能聚焦
-        this.activateEditor();
+        // 不再重复调用，因为setupPortalEvents中已经调用了activateEditor
     },
 
     // 销毁 Editor 实例并移除 Portal DOM
@@ -604,97 +587,71 @@ export default {
          console.log('setupPortalEvents: 添加 发送 按钮监听');
       }
       
-      // 阻止编辑器内容冒泡
+      // 简化编辑器点击逻辑，只保留一个事件处理
       if (editorContent) {
-        editorContent.addEventListener('click', (e) => {
+        this._portalEditorClickHandler = (e) => {
           e.stopPropagation();
-          // 点击编辑器内容区域时自动聚焦
-          if (this.editor) {
+          console.log('Portal编辑器内容区域点击...');
+          if (this.editor && this.editor.commands) {
             this.editor.commands.focus();
+            console.log('Portal编辑器点击: Tiptap focus command called.');
           }
-          this.focusEditorDOM();
-        });
+        };
+        editorContent.addEventListener('click', this._portalEditorClickHandler);
+        console.log('setupPortalEvents: 添加 Portal 编辑器区域点击 监听');
       }
       
-      // 阻止整个模态框的点击冒泡
-      this.portalContent.addEventListener('click', (e) => {
-        e.stopPropagation();
-        // 点击模态框任何地方都尝试聚焦编辑器
-        if (this.editor) {
-          this.editor.commands.focus('end');
-        }
-        this.focusEditorDOM();
-      });
-      
-      // 初始聚焦
-      this.focusEditorDOM();
-      
-      // 延迟200ms后再次尝试聚焦，以确保编辑器完全加载
-      setTimeout(() => {
-        if (this.editor) {
-          this.editor.commands.focus('end');
-          this.focusEditorDOM();
-        }
-      }, 200);
-
-       // 阻止编辑器内容冒泡并尝试聚焦
-       if (editorContent) {
-           this._portalEditorClickHandler = (e) => {
-               e.stopPropagation();
-               console.log('Portal编辑器内容区域点击...');
-               // 现在 this.editor 应该绑定到这个 DOM 了，可以直接调用 Tiptap focus
-               if (this.editor && this.editor.commands) {
-                   this.editor.commands.focus();
-                    console.log('Portal编辑器点击: Tiptap focus command called.');
-               } else {
-                   console.log('Portal编辑器点击: Editor实例未准备好，无法 Tiptap 聚焦');
-               }
-               this.focusEditorDOM(); // 同时尝试 DOM API 聚焦作为后备
-           };
-          editorContent.addEventListener('click', this._portalEditorClickHandler);
-           console.log('setupPortalEvents: 添加 Portal 编辑器区域点击 监听');
-       }
-
-       // 阻止整个模态框的点击冒泡并尝试聚焦
-       if (this.portalContent) {
-            this._portalContentClickHandler = (e) => {
-              e.stopPropagation();
-              console.log('Portal模态框内容区点击 (非按钮/编辑器区域)');
-               if (this.editor && this.editor.commands) {
-                  this.editor.commands.focus('end'); // 尝试聚焦到末尾
-                  console.log('Portal模态框点击: Tiptap focus end command called.');
-               } else {
-                  console.log('Portal模态框点击: Editor实例未准备好，无法 Tiptap 聚焦');
-               }
-               this.focusEditorDOM(); // DOM API 强制聚焦到 Portal 中的 DOM
-           };
-           this.portalContent.addEventListener('click', this._portalContentClickHandler);
-            console.log('setupPortalEvents: 添加 Portal 模态框内容点击 监听');
-       }
+      // 简化模态框点击逻辑，减少重复聚焦
+      if (this.portalContent) {
+        this._portalContentClickHandler = (e) => {
+          e.stopPropagation();
+          console.log('Portal模态框内容区点击');
+          if (this.editor && this.editor.commands) {
+            this.editor.commands.focus('end');
+            console.log('Portal模态框点击: Tiptap focus end command called.');
+          }
+        };
+        this.portalContent.addEventListener('click', this._portalContentClickHandler);
+        console.log('setupPortalEvents: 添加 Portal 模态框内容点击 监听');
+      }
 
       console.log('setupPortalEvents: Portal 事件监听设置完成.');
 
-      // 多次聚焦尝试，确保成功 (现在它们作用于绑定到 Portal DOM 的 editor 实例)
-       this.activateEditor();
+      // 调用一次聚焦尝试，通过activateEditor处理
+      this.activateEditor();
     },
 
     // 多次尝试聚焦编辑器，现在作用于绑定到 Portal DOM 的实例
     activateEditor() {
-      console.log('activateEditor: 开始激活编辑器 (多次尝试聚焦)...');
-      const focusTimes = [50, 150, 300, 600, 1000]; // 更多尝试时间点
+      console.log('activateEditor: 开始激活编辑器 (减少聚焦次数)...');
+      // 减少聚焦次数，从[50, 150, 300, 600, 1000]改为只有[50, 300]
+      const focusTimes = [50, 300]; 
+      
+      // 添加聚焦成功标志
+      let focusSucceeded = false;
 
       focusTimes.forEach(time => {
         setTimeout(() => {
-           console.log(`activateEditor: ${time}ms 后尝试聚焦... editor exists:`, !!this.editor);
+          // 如果已经成功聚焦，则不再尝试
+          if (focusSucceeded) {
+            console.log(`activateEditor: ${time}ms 后跳过聚焦，因为已经成功聚焦`);
+            return;
+          }
+          
+          console.log(`activateEditor: ${time}ms 后尝试聚焦... editor exists:`, !!this.editor);
           if (this.editor && this.editor.commands) {
             // 调用 Tiptap focus command
-            this.editor.commands.focus('end');
-            console.log(`activateEditor: ${time}ms 后 Tiptap focus command called.`);
+            const focusResult = this.editor.commands.focus('end');
+            focusSucceeded = focusResult; // 记录聚焦结果
+            console.log(`activateEditor: ${time}ms 后 Tiptap focus command called. 结果:`, focusResult);
           } else {
-             console.log(`activateEditor: ${time}ms 后 Editor实例未准备好，无法 Tiptap 聚焦`);
+            console.log(`activateEditor: ${time}ms 后 Editor实例未准备好，无法 Tiptap 聚焦`);
           }
-           // 同时尝试 DOM API 聚焦作为后备
-          this.focusEditorDOM();
+          
+          // 如果 Tiptap 聚焦失败，才尝试 DOM API 聚焦作为后备
+          if (!focusSucceeded) {
+            this.focusEditorDOM();
+          }
         }, time);
       });
     },
