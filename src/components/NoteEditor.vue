@@ -217,36 +217,58 @@ export default {
       this.$emit('cancel-edit');
     },
     handleSubmit(e) {
+      console.group('NoteEditor - handleSubmit');
+      console.log('事件对象:', {
+        type: e?.type,
+        target: e?.target?.className,
+        timestamp: Date.now()
+      });
+      
       // 阻止事件冒泡并阻止默认行为
       if (e) {
         e.stopPropagation();
         e.preventDefault();
+        console.log('已阻止事件冒泡和默认行为');
+      }
+      
+      if (this.isSubmitting) {
+        console.warn('提交被阻止 - 正在提交中');
+        console.groupEnd();
+        return;
       }
       
       if (!this.editor) {
-        console.warn('编辑器实例不存在');
+        console.warn('提交被阻止 - 编辑器实例不存在');
+        console.groupEnd();
         return;
       }
+      console.log('编辑器实例检查通过');
 
       // 获取编辑器内容
       const domContent = this.portalContent?.querySelector('.tiptap-editor');
       if (!domContent) {
         console.warn('未找到编辑器DOM');
+        console.groupEnd();
         return;
       }
+      console.log('找到编辑器DOM元素');
       
       // 使用DOM内容作为实际内容检查
       const actualContent = domContent.textContent.trim();
       if (!actualContent) {
         console.warn('内容为空');
+        console.groupEnd();
         return;
       }
+      console.log('内容检查通过，长度:', actualContent.length);
       
       // 获取HTML内容并清理
       let html = domContent.innerHTML;
+      console.log('原始HTML内容长度:', html.length);
+      
       html = html.replace(/<span style="color: #bb86fc; font-weight: bold;" data-tag="true">(.*?)<\/span>/g, 
                          '<span class="tag-highlight" data-tag="true">$1</span>');
-
+      console.log('第一次清理后HTML长度:', html.length);
       
       if (this.isSubmitting) {
         console.warn('提交终止：正在提交中');
@@ -257,11 +279,13 @@ export default {
       // 更彻底地清理HTML，确保标签渲染正确
       html = html.replace(/<span style="color: #bb86fc; font-weight: bold;" data-tag="true">(.*?)<\/span>/g, 
                          '<span class="tag-highlight" data-tag="true">$1</span>');
+      console.log('第二次清理后HTML长度:', html.length);
       
       console.log('准备发送submit-note事件');
       // 立即触发提交事件
       this.$emit('submit-note', html);
       console.log('submit-note事件已发送');
+      console.groupEnd();
     },
     
     // 创建传送门
@@ -382,7 +406,7 @@ export default {
       });
     },
     
-    // 新增方法：使用DOM API直接聚焦编辑器内容
+    // 使用DOM API聚焦编辑器内容
     focusEditorDOM() {
       if (!this.portalContent) return;
       
@@ -390,7 +414,6 @@ export default {
         const editorElement = this.portalContent.querySelector('.tiptap-editor');
         if (editorElement) {
           editorElement.tabIndex = 0;
-          editorElement.focus();
           
           const editableDiv = editorElement.querySelector('[contenteditable="true"]');
           if (editableDiv) {
@@ -433,17 +456,30 @@ export default {
     
     // 为传送门内容设置事件
     setupPortalEvents() {
-      if (!this.portalContent) return;
+      console.group('NoteEditor - setupPortalEvents');
+      if (!this.portalContent) {
+        console.warn('portalContent不存在，无法设置事件');
+        console.groupEnd();
+        return;
+      }
       
       // 找到按钮元素
       const cancelBtn = this.portalContent.querySelector('.cancel-btn');
       const submitBtn = this.portalContent.querySelector('.submit-btn');
       const editorContent = this.portalContent.querySelector('.tiptap-editor');
       
+      console.log('按钮元素查找结果:', {
+        cancelBtn: !!cancelBtn,
+        submitBtn: !!submitBtn,
+        editorContent: !!editorContent
+      });
+      
       // 添加取消事件
       if (cancelBtn) {
         cancelBtn.addEventListener('click', (e) => {
+          console.log('取消按钮被点击');
           e.stopPropagation();
+          e.preventDefault();
           this.handleCancel();
         });
       }
@@ -451,8 +487,18 @@ export default {
       // 添加提交事件
       if (submitBtn) {
         submitBtn.addEventListener('click', (e) => {
+          console.log('提交按钮被点击');
           e.stopPropagation();
-          this.handleSubmit();
+          e.preventDefault();
+          this.handleSubmit(e);
+        });
+        
+        // 添加触摸事件
+        submitBtn.addEventListener('touchend', (e) => {
+          console.log('提交按钮触摸结束');
+          e.stopPropagation();
+          e.preventDefault();
+          this.handleSubmit(e);
         });
       }
       
@@ -464,7 +510,6 @@ export default {
           if (this.editor) {
             this.editor.commands.focus();
           }
-          // 尝试DOM API聚焦
           this.focusEditorDOM();
         });
       }
@@ -476,50 +521,36 @@ export default {
         if (this.editor) {
           this.editor.commands.focus('end');
         }
-        // 尝试DOM API聚焦
         this.focusEditorDOM();
       });
       
-      // 确保在事件设置完成后也能聚焦编辑器
-      setTimeout(() => {
-        if (this.editor) {
-          this.editor.commands.focus('end');
-          console.log('在事件设置后再次聚焦编辑器');
-        }
-        this.focusEditorDOM();
-      }, 150);
+      // 初始聚焦
+      this.focusEditorDOM();
       
-      // 使用多个定时器在不同时间点尝试聚焦，提高成功率
+      // 延迟200ms后再次尝试聚焦，以确保编辑器完全加载
       setTimeout(() => {
         if (this.editor) {
           this.editor.commands.focus('end');
-          console.log('250ms后再次尝试聚焦');
+          this.focusEditorDOM();
         }
-        this.focusEditorDOM();
-      }, 250);
-      
-      setTimeout(() => {
-        if (this.editor) {
-          this.editor.commands.focus('end');
-          console.log('500ms后再次尝试聚焦');
-        }
-        this.focusEditorDOM();
-      }, 500);
+      }, 200);
     },
     
     // 添加聚焦激活器
     activateEditor() {
-      // 尝试两次激活编辑器
-      const focusTimes = [100, 300];
+      // 初始聚焦
+      if (this.editor) {
+        this.editor.commands.focus('end');
+        this.focusEditorDOM();
+      }
       
-      focusTimes.forEach(time => {
-        setTimeout(() => {
-          if (this.editor) {
-            this.editor.commands.focus('end');
-            this.focusEditorDOM();
-          }
-        }, time);
-      });
+      // 延迟200ms后再次尝试聚焦
+      setTimeout(() => {
+        if (this.editor) {
+          this.editor.commands.focus('end');
+          this.focusEditorDOM();
+        }
+      }, 200);
     }
   }
 }

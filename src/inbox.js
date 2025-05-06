@@ -18,7 +18,14 @@ export default {
       console.log('请求成功，响应数据:', response.data);
       return response;
     } catch (error) {
-      console.error(`请求失败 [${api.defaults.baseURL}/inbox/notes]:`, error.response?.data || error.message);
+      console.error('请求失败详情：', {
+        url: `${api.defaults.baseURL}/inbox/notes`,
+        params: { limit, offset, tag },
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        errorData: error.response?.data,
+        errorMessage: error.message
+      });
       throw error;
     }
   },

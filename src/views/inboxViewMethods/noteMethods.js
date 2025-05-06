@@ -90,7 +90,49 @@ export default function noteMethods(vm) {
         }
         vm.cancelEdit();
       } catch (error) {
-        console.error(`笔记${isEditing ? '更新' : '创建'}失败:`, error);
+        // 详细记录错误信息
+        const errorDetails = {
+          // 错误基本信息
+          message: error.message,
+          name: error.name,
+          stack: error.stack,
+          // 请求相关信息
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          // 请求详情
+          requestUrl: error.config?.url,
+          requestMethod: error.config?.method,
+          requestHeaders: error.config?.headers,
+          requestData: error.config?.data,
+          // 环境信息
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          timestamp: new Date().toISOString(),
+          // 操作上下文
+          operationType: isEditing ? '更新笔记' : '创建笔记',
+          noteData: noteData
+        };
+        
+        // 格式化错误信息以便于调试
+        console.error(`[错误日志] 笔记${isEditing ? '更新' : '创建'}失败:`);
+        console.error('错误详情:', JSON.stringify(errorDetails, null, 2));
+        console.error('完整错误对象:', error);
+        
+        // 用户友好的错误提示
+        const userMessage = error.response?.data?.message || 
+          (error.response?.status === 401 ? '认证失败，请重新登录' :
+           error.response?.status === 403 ? '没有权限执行此操作' :
+           error.response?.status === 413 ? '内容超出长度限制' :
+           error.response?.status >= 500 ? '服务器出现错误，请稍后重试' :
+           '创建笔记时出现错误，请重试');
+        
+        console.error('[用户提示]', userMessage);
+        
+        // 如果是网络错误，添加额外提示
+        if (!error.response || error.message.includes('Network Error')) {
+          console.error('[网络错误] 请检查网络连接状态');
+        }
       } finally {
         vm.isSubmitting = false;
       }
