@@ -12,9 +12,9 @@
         <div :class="[styles['sidebar-header'], { [styles['dark-mode']]: isDarkMode }]">
           <h3>筛选选项</h3>
           <span
-            v-if="currentTag"
+            v-if="selectedTags && selectedTags.length > 0"
             :class="[styles['current-filter'], { [styles['dark-mode']]: isDarkMode }]"
-          > (当前筛选: {{ currentTag }})</span>
+          > (已选 {{ selectedTags.length }} 个标签)</span>
           <button
             @click.stop="handleCloseSidebar"
             :class="[styles['close-btn'], { [styles['dark-mode']]: isDarkMode }]"
@@ -24,17 +24,42 @@
         </div>
         <div :class="[styles['tag-filter'], { [styles['dark-mode']]: isDarkMode }]">
           <h4>标签</h4>
+          
+          <!-- 添加多选提示 -->
+          <div class="tag-filter-tip">
+            点击可多选标签 <span class="tip-badge">多选</span>
+          </div>
+          
+          <!-- 添加已选标签显示列表 -->
+          <div v-if="selectedTags && selectedTags.length > 0" :class="styles['selected-tags-list']">
+            <div 
+              v-for="tag in selectedTags" 
+              :key="`selected-${tag}`" 
+              :class="styles['selected-tag-item']"
+            >
+              #{{ tag }}
+              <span class="remove-tag" @click.stop="removeTag(tag)">×</span>
+            </div>
+          </div>
+          
           <ul
             v-if="allTags && allTags.length > 0"
             :class="[styles['tag-list'], { [styles['dark-mode']]: isDarkMode }]"
           >
             <li
-              v-for="tag in allTags"
-              :key="tag"
-              @click="filterByTag(tag)"
-              :class="[{ [styles['active']]: currentTag === tag }, { [styles['dark-mode']]: isDarkMode }]"
+              v-for="(tag, index) in allTags"
+              :key="`tag-${index}`"
+              @click.stop="directTagClick(tag)"
+              style="border: 2px solid transparent; margin-bottom: 8px; padding: 10px; position: relative;"
+              :style="{
+                backgroundColor: isTagSelected(tag) ? '#ffeeee' : '#f5f5f5',
+                borderColor: isTagSelected(tag) ? 'red' : 'transparent'
+              }"
             >
-              {{ tag }}
+              {{ tag }} 
+              <span style="position: absolute; right: 5px; color: red; font-weight: bold;" v-if="isTagSelected(tag)">
+                [已选中]
+              </span>
             </li>
           </ul>
           <p
@@ -50,7 +75,7 @@
             加载标签中...
           </p>
           <button
-            v-if="currentTag"
+            v-if="selectedTags && selectedTags.length > 0"
             @click="clearTagFilter"
             :class="[styles['clear-filter-btn'], { [styles['dark-mode']]: isDarkMode }]"
           >
@@ -67,6 +92,28 @@
             {{ sortMethod === 'created' ? '⏱ 创建时间' : '🔄 修改时间' }}
           </button>
         </div>
+        
+        <!-- 修改当前筛选区域的显示 -->
+        <div v-if="selectedTags && selectedTags.length > 0" class="current-filters" style="display: flex; margin: 0 10px; max-width: 60%;">
+          <span class="filter-info" style="font-size: 14px; color: #666;">当前筛选:</span>
+          <div class="filter-tags" style="display: flex; flex-wrap: wrap; gap: 5px;">
+            <span 
+              v-for="tag in selectedTags" 
+              :key="`filter-${tag}`" 
+              class="filter-tag"
+              style="background-color: #007bff; color: white; padding: 3px 8px; border-radius: 4px; font-size: 13px; display: flex; align-items: center;"
+            >
+              #{{ tag }}
+              <span 
+                class="remove-filter" 
+                @click.stop="removeTag(tag)"
+                style="margin-left: 5px; cursor: pointer; font-weight: bold;"
+              >×</span>
+            </span>
+          </div>
+          <span class="filter-logic" style="font-size: 12px; color: #999; font-style: italic;">(显示包含任一标签的笔记)</span>
+        </div>
+        
         <button
           @click="refreshData"
           :class="[styles['refresh-btn'], { [styles['dark-mode']]: isDarkMode }]"
@@ -158,6 +205,33 @@
         </button>
       </div>
     </div>
+
+    <!-- 添加调试面板 -->
+    <div style="margin-top: 20px; padding: 10px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px;">
+      <h5 style="margin-top: 0; color: #333;">调试信息：</h5>
+      <div style="margin-bottom: 10px;">
+        <strong>已选标签数量：</strong> {{ selectedTags.length }}
+      </div>
+      <div style="margin-bottom: 10px;">
+        <strong>已选标签列表：</strong>
+        <ul style="margin-top: 5px; padding-left: 20px;">
+          <li v-for="(tag, index) in selectedTags" :key="index" style="margin-bottom: 5px;">
+            {{ tag }}
+          </li>
+        </ul>
+        <div v-if="selectedTags.length === 0" style="font-style: italic; color: #666;">
+          (暂无选中标签)
+        </div>
+      </div>
+      <div>
+        <button 
+          @click="selectedTags = []" 
+          style="padding: 5px 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;"
+        >
+          清空选中标签
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -175,46 +249,42 @@ export default {
   props: ['isDarkMode'],
   emits: ['toggle-dark-mode'],
   data() {
-    console.log('[InboxView] 初始化 data()');
     return {
       showSidebar: false,
       notes: [],
       sortMethod: 'created',
-      showInput: false, // 控制笔记编辑器显示
+      showInput: false,
       isSubmitting: false,
       editContent: '',
       editingNote: null,
-      currentTag: null, // 用于存储当前选中的标签
-      allTags: [], // 用于存储所有标签
+      selectedTags: [],
+      allTags: [],
       isLoadingMore: false,
       currentOffset: 0,
       hasMore: true,
       suggestions: [],
       suggestionIndex: -1,
       highlightedContent: '',
-      isLoadingTags: false, // 用于指示是否正在加载标签
-      cachedDraftContent: '', // 新增：用于存储未提交的草稿内容
-      selectedNoteIdForComments: null, // 改为用于编辑器
-      isAddingComment: false, // 控制评论编辑器是否显示
-      commentContent: '', // 存储评论内容
-      comments: [], // 存储评论列表
-      styles: styles, // 将导入的 styles 对象添加到 data 中
-      detailedTags: [], // 新增：用于存储从后端获取的详细标签信息
-      // 添加一个变量用于跟踪点击是否来自筛选栏内部
-      sidebarClicked: false,
+      isLoadingTags: false,
+      cachedDraftContent: '',
+      selectedNoteIdForComments: null,
+      isAddingComment: false,
+      commentContent: '',
+      comments: [],
+      styles: styles,
+      detailedTags: [],
     };
   },
   computed: {
     sortedNotes() {
-      console.log('当前筛选标签:', this.currentTag);
-      console.log('当前筛选标签:', this.currentTag, '笔记标签:', this.note?.tags);
       let filtered = [...this.notes];
 
       // 根据当前选中的标签进行过滤
-      if (this.currentTag) {
+      if (this.selectedTags && this.selectedTags.length > 0) {
         filtered = filtered.filter(note => {
-          console.log('检查笔记:', note.id, '标签:', note.tags);
-          return note?.tags && note.tags.includes(this.currentTag);
+          if (!note?.tags) return false;
+          // 检查笔记是否包含任意选中的标签
+          return this.selectedTags.some(tag => note.tags.includes(tag));
         });
       }
 
@@ -249,65 +319,18 @@ export default {
     editContent(newValue) {
       this.handleInput(newValue); 
     },
-    // 添加对showSidebar的监视，以便调试CSS类的变化
-    showSidebar(newVal, oldVal) {
-      console.group('[showSidebar] 【筛选栏状态变化】');
-      console.log(`[showSidebar] 筛选栏状态从 ${oldVal ? '打开' : '关闭'} 变为 ${newVal ? '打开' : '关闭'}`);
-      
-      // 在下一个DOM更新周期检查筛选栏的样式类
-      this.$nextTick(() => {
-        const sidebar = this.$el.querySelector('aside');
-        if (sidebar) {
-          console.log('[showSidebar] 筛选栏样式类:', sidebar.className);
-          // 检查是否包含sidebar-open类
-          const hasSidebarOpenClass = sidebar.classList.contains(styles['sidebar-open']);
-          console.log('[showSidebar] 是否包含sidebar-open类?', hasSidebarOpenClass);
-          console.log('[showSidebar] showSidebar状态与sidebar-open类是否一致?', newVal === hasSidebarOpenClass);
-          
-          if (newVal !== hasSidebarOpenClass) {
-            console.error('[showSidebar] 警告: showSidebar状态与实际CSS类不一致!');
-          }
-        } else {
-          console.error('[showSidebar] 无法找到筛选栏元素!');
-        }
-      });
-      
-      console.groupEnd();
-    },
   },
   created() {
-    console.log('[InboxView] 组件被导入');
   },
   mounted() {
-    console.log('[InboxView] 组件已挂载');
     this.loadNotes(true);
-    this.loadAllTags(); // 改为加载详细标签
+    this.loadAllTags();
     this.initScrollObserver();
-    
-    // 为筛选栏添加点击事件监听器，标记点击来自筛选栏内部
-    this.$nextTick(() => {
-      console.group('[showSidebar] 【挂载筛选栏点击检测】');
-      const sidebar = this.$el.querySelector('aside');
-      if (sidebar) {
-        console.log('[showSidebar] 成功找到筛选栏元素:', sidebar);
-        sidebar.addEventListener('click', this.handleSidebarClick);
-        console.log('[showSidebar] ==> 已添加筛选栏内部点击事件监听器');
-        
-        // 测试 class 选择器是否能匹配到元素
-        const sidebarToggle = this.$el.querySelector(`.${styles['sidebar-toggle']}`);
-        console.log('[showSidebar] 能否找到筛选栏切换按钮?', !!sidebarToggle);
-        console.log('[showSidebar] 筛选栏切换按钮:', sidebarToggle);
-      } else {
-        console.error('[showSidebar] 无法找到筛选栏元素!');
-      }
-      console.groupEnd();
-    });
   },
   beforeDestroy() {
-    // 组件销毁前移除事件监听器
-    const sidebar = this.$el.querySelector('aside');
-    if (sidebar) {
-      sidebar.removeEventListener('click', this.handleSidebarClick);
+    // 清理无限滚动观察器
+    if (this.scrollObserver) {
+      this.scrollObserver.disconnect();
     }
   },
   methods: {
@@ -318,22 +341,19 @@ export default {
     },
     async handleSubmit(contentFromEditor) {
       if (!contentFromEditor || /^\s*$/.test(contentFromEditor)) {
-        console.warn('提交被阻止 - 原因: 内容为空或仅包含空白字符');
         return;
       }
       if (this.isSubmitting) {
-        console.warn('提交被阻止 - 原因: 正在提交中');
         return;
       }
 
       this.isSubmitting = true;
       const isEditing = !!this.editingNote;
-      const noteData = { content: contentFromEditor }; // 不再需要手动提取标签
+      const noteData = { content: contentFromEditor };
 
       try {
         if (isEditing) {
           await flomoApi.updateNote(this.editingNote.id, noteData);
-          console.log('笔记更新成功');
 
           const index = this.notes.findIndex(n => n.id === this.editingNote.id);
           if (index !== -1) {
@@ -344,42 +364,36 @@ export default {
               updated_at: new Date().toISOString()
             });
           }
-
         } else {
-          console.log('正在创建新笔记');
           const response = await flomoApi.createNote(noteData);
-          console.log('笔记创建成功:', response?.data);
 
           if (response?.data) {
-        this.notes.unshift({ ...response.data, tags: response.data.tags || [] });
-        this.cachedDraftContent = ''; // 成功创建后清空缓存
-      } else {
+            this.notes.unshift({ ...response.data, tags: response.data.tags || [] });
+            this.cachedDraftContent = ''; // 成功创建后清空缓存
+          } else {
             await this.loadNotes(true);
           }
         }
         this.cancelEdit();
       } catch (error) {
-        console.error(`笔记${isEditing ? '更新' : '创建'}失败:`, error);
+        // 静默处理错误
       } finally {
         this.isSubmitting = false;
       }
     },
     cancelEdit() {
       this.showInput = false;
-      console.log('取消编辑/新建。当前是否在编辑现有笔记:', !!this.editingNote);
+      
       // 仅在编辑现有笔记时重置内容
       if (!this.editingNote) {
-        // Do nothing, keep the content for the next time
-        console.log('取消新建，保留 editContent:', this.editContent);
+        // 保留内容供下次使用
       } else {
         this.editContent = ''; // 如果是编辑现有笔记，则清除
-        console.log('取消编辑现有笔记，清除 editContent:', this.editContent);
       }
       this.editingNote = null;
       this.suggestions = [];
       this.suggestionIndex = -1;
       this.highlightedContent = '';
-      console.log('编辑/新建已取消');
     },
     highlightText() {
       if (!this.$refs.noteInput) return;
@@ -424,7 +438,6 @@ export default {
       this.updateSuggestions(currentTag);
     },
     async updateSuggestions(query) {
-      // Fetch all tags for suggestions
       try {
         const response = await flomoApi.getAllTags();
         const availableTags = response?.data || [];
@@ -439,9 +452,7 @@ export default {
             .map(tag => ({ path: tag }));
         }
         this.suggestionIndex = -1;
-        console.log("Suggestions:", this.suggestions);
       } catch (error) {
-        console.error("Failed to fetch tags for suggestions:", error);
         this.suggestions = [];
       }
     },
@@ -498,33 +509,21 @@ export default {
       }
     },
     handleShowComments(noteId) {
-      console.log('Received show-comments event for note ID:', noteId);
       this.selectedNoteIdForComments = noteId;
       this.fetchComments(noteId); // Call the method to fetch comments
     },
     async fetchComments(noteId) {
       try {
-        console.log(`Workspaceing comments for note ${noteId}...`);
-
-        // 替换为你的实际API端点
         const response = await flomoApi.getCommentsForNote(noteId);
-        // 或者使用 fetch:
-        // const response = await fetch(`/api/notes/${noteId}/comments`);
-
         if (response.status !== 200) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         this.comments = response.data;
-        console.log('Comments fetched:', this.comments);
       } catch (error) {
-        console.error('Error fetching comments:', error);
         this.comments = [];
       }
     },
     handleShowCommentEditor(note) {
-      console.groupCollapsed('[InboxView] handleShowCommentEditor 调试');
-      console.log('1. 接收到 note 对象:', note);
-
       this.selectedNoteIdForComments = note.id;
       this.isAddingComment = true;
 
@@ -536,14 +535,7 @@ export default {
 
       this.commentContent = `[[${zettelId}]] `;
 
-      console.log('2. 设置后的状态:', {
-        isAddingComment: this.isAddingComment,
-        commentContent: this.commentContent,
-        selectedNoteId: this.selectedNoteIdForComments
-      });
-
       this.fetchComments(note.id);
-      console.groupEnd();
     },
 
     async submitComment() {
@@ -556,13 +548,12 @@ export default {
           { content: this.commentContent }
         );
         if (response.status === 200 || response.status === 201) {
-          console.log('评论提交成功:', response.data);
           this.commentContent = '';
           this.isAddingComment = false;
           this.fetchComments(this.selectedNoteIdForComments);
         }
       } catch (error) {
-        console.error('提交评论出错:', error);
+        // 静默处理错误
       }
     },
 
@@ -587,7 +578,6 @@ export default {
       const observer = new IntersectionObserver((entries) => {
         const entry = entries[0];
         if (entry.isIntersecting && this.hasMore && !this.isLoadingMore) {
-          console.log("触发加载更多...");
           this.loadNotes(false);
         }
       }, options);
@@ -596,16 +586,12 @@ export default {
         const trigger = this.$el.querySelector('.load-more-trigger');
         if (trigger) {
           observer.observe(trigger);
-          console.log("无限滚动观察器已附加");
-        } else {
-          console.warn(".load-more-trigger 元素未找到");
         }
       });
       this.scrollObserver = observer;
     },
     toggleSortMethod() {
       this.sortMethod = this.sortMethod === 'created' ? 'updated' : 'created';
-      console.log(`排序方法切换为: ${this.sortMethod}`);
     },
     sortBy(method) {
       console.log(`sortBy('${method}') 被调用，为兼容旧代码重定向到 toggleSortMethod()`);
@@ -614,80 +600,213 @@ export default {
       // 否则切换到请求的方法
       this.sortMethod = method;
     },
-    // 添加处理点击筛选栏内部的方法
-    handleSidebarClick(event) {
-      console.group('[showSidebar] 【筛选栏内部点击】');
-      console.log('[showSidebar] ==> 检测到筛选栏内部点击，事件对象:', event.target);
-      // 阻止事件冒泡，确保不会触发外部点击
-      event.stopPropagation();
-      this.sidebarClicked = true;
-      console.log('[showSidebar] ==> 设置 sidebarClicked 标记为:', this.sidebarClicked);
-      console.groupEnd();
-    },
-    
-    // 添加处理外部点击的方法
-    handleOutsideClick(event) {
-      console.group('[showSidebar] 【处理外部点击】');
-      console.log('[showSidebar] 检测到点击, 事件对象:', event.target);
-      console.log('[showSidebar] 当前筛选栏状态:', this.showSidebar ? '打开' : '关闭');
-      console.log('[showSidebar] sidebarClicked 标记:', this.sidebarClicked);
+    directTagClick(tag) {
+      console.log(`[DEBUG] 点击标签: ${tag}`);
+      // 从格式化后的标签字符串中提取标签名称
+      const tagName = tag.split('(')[0].substring(1).trim();
+      console.log(`[DEBUG] 提取的标签名: ${tagName}`);
       
-      // 获取 aside 元素进行调试
-      const asideElement = this.$el.querySelector('aside');
-      console.log('[showSidebar] 筛选栏元素:', asideElement);
-      console.log('[showSidebar] 筛选栏 className:', asideElement ? asideElement.className : 'undefined');
+      // 检查标签是否已经选中
+      const index = this.selectedTags.indexOf(tagName);
+      console.log(`[DEBUG] 当前选中标签: ${JSON.stringify(this.selectedTags)}, 索引: ${index}`);
       
-      // 更详细地检查点击事件是否在筛选栏内部
-      const isInsideAside = asideElement ? asideElement.contains(event.target) : false;
-      console.log('[showSidebar] 点击是否在筛选栏内部 (使用 contains)?', isInsideAside);
+      // 创建新数组以保证Vue能检测到变化
+      const newSelectedTags = [...this.selectedTags];
       
-      // 检查是否点击了筛选栏切换按钮
-      const toggleElement = this.$el.querySelector(`.${styles['sidebar-toggle']}`);
-      console.log('[showSidebar] 切换按钮元素:', toggleElement);
-      const isToggleButton = toggleElement ? toggleElement.contains(event.target) : false;
-      console.log('[showSidebar] 点击是否在切换按钮上 (使用 contains)?', isToggleButton);
-      
-      // 使用两种方法检查
-      const clickedToggle = isToggleButton || event.target.closest(`.${styles['sidebar-toggle']}`) || event.target.matches(`.${styles['sidebar-toggle']}`);
-      console.log('[showSidebar] 点击了切换按钮 (组合检查)?', clickedToggle);
-      
-      // 检查是否点击了筛选栏内部 (使用多种方法)
-      const clickedAside = isInsideAside || event.target.closest('aside');
-      console.log('[showSidebar] 点击了筛选栏内部 (组合检查)?', !!clickedAside);
-      
-      // 如果点击来自筛选栏内部或筛选栏折叠按钮，不做任何处理
-      if (this.sidebarClicked || clickedToggle || clickedAside) {
-        console.log('[showSidebar] ==> 点击来自筛选栏内部或切换按钮，不关闭筛选栏');
-        this.sidebarClicked = false;
-        console.log('[showSidebar] ==> 重置 sidebarClicked 标记为:', this.sidebarClicked);
-        console.groupEnd();
-        return;
-      }
-      
-      // 如果筛选栏是展开的，则关闭它
-      if (this.showSidebar) {
-        console.log('[showSidebar] ==> 筛选栏是展开状态，且点击在外部，现在关闭它');
-        this.showSidebar = false;
-        console.log('[showSidebar] ==> 筛选栏状态更新为:', this.showSidebar ? '打开' : '关闭');
+      // 切换选中状态
+      if (index !== -1) {
+        // 如果已选中，则移除
+        newSelectedTags.splice(index, 1);
+        console.log(`[DEBUG] 移除标签: ${tagName}, 新数组: ${JSON.stringify(newSelectedTags)}`);
       } else {
-        console.log('[showSidebar] ==> 筛选栏已经是关闭状态，无需操作');
+        // 如果未选中，则添加
+        newSelectedTags.push(tagName);
+        console.log(`[DEBUG] 添加标签: ${tagName}, 新数组: ${JSON.stringify(newSelectedTags)}`);
       }
       
-      this.sidebarClicked = false;
-      console.log('[showSidebar] ==> 重置 sidebarClicked 标记为:', this.sidebarClicked);
-      console.groupEnd();
+      // 更新数组
+      this.selectedTags = newSelectedTags;
+      console.log(`[DEBUG] 更新后的selectedTags: ${JSON.stringify(this.selectedTags)}`);
+      
+      // 强制更新视图和数据
+      this.$nextTick(() => {
+        console.log(`[DEBUG] nextTick中的selectedTags: ${JSON.stringify(this.selectedTags)}`);
+        this.$forceUpdate();
+        this.loadNotes(true);
+      });
     },
-    
-    // 保持原有的toggleSidebar方法，但添加更多日志
+    isTagSelected(tag) {
+      try {
+        // 标签格式是 "#标签名(数量) 日期"，提取标签名
+        const tagName = tag.split('(')[0].substring(1).trim();
+        const result = this.selectedTags.includes(tagName);
+        console.log(`[DEBUG] 检查标签: ${tag}, 提取名称: ${tagName}, 是否选中: ${result}, 当前选中: ${JSON.stringify(this.selectedTags)}`);
+        return result;
+      } catch (error) {
+        console.error(`[ERROR] isTagSelected错误:`, error);
+        return false;
+      }
+    },
+    handleOutsideClick(event) {
+      // 检查是否点击的是侧边栏或切换按钮
+      const sidebar = this.$el.querySelector('aside');
+      const toggleButton = this.$el.querySelector(`.${styles['sidebar-toggle']}`);
+      
+      // 如果点击的不是侧边栏或切换按钮，并且侧边栏是打开的，则关闭侧边栏
+      if (this.showSidebar && 
+          sidebar && 
+          !sidebar.contains(event.target) && 
+          toggleButton && 
+          !toggleButton.contains(event.target)) {
+        this.showSidebar = false;
+      }
+    },
     toggleSidebar() {
-      console.group('[showSidebar] 【切换筛选栏】');
-      console.log('[showSidebar] 当前筛选栏状态:', this.showSidebar ? '打开' : '关闭');
-      
+      console.log('切换侧边栏状态');
       this.showSidebar = !this.showSidebar;
-      
-      console.log('[showSidebar] ==> 筛选栏状态切换为:', this.showSidebar ? '打开' : '关闭');
-      console.groupEnd();
     },
+    handleCloseSidebar() {
+      this.showSidebar = false;
+    },
+    handleNoteListTagClick(tag) {
+      console.log(`从笔记列表点击标签: ${tag}`);
+      
+      // 检查标签是否已被选中
+      const index = this.selectedTags.indexOf(tag);
+      
+      // 创建新数组以保证Vue能检测到变化
+      const newSelectedTags = [...this.selectedTags];
+      
+      // 切换选中状态
+      if (index !== -1) {
+        newSelectedTags.splice(index, 1);
+        console.log(`移除标签: ${tag}`);
+      } else {
+        newSelectedTags.push(tag);
+        console.log(`添加标签: ${tag}`);
+      }
+      
+      // 更新数组
+      this.selectedTags = newSelectedTags;
+      
+      // 确保侧边栏打开
+      if (!this.showSidebar && this.selectedTags.length > 0) {
+        this.showSidebar = true;
+      }
+      
+      // 强制更新视图和数据
+      this.$nextTick(() => {
+        this.$forceUpdate();
+        this.loadNotes(true);
+      });
+    },
+    removeTag(tag) {
+      console.log(`尝试移除标签: ${tag}`);
+      // 检查标签是否已存在
+      const index = this.selectedTags.indexOf(tag);
+      
+      // 如果找到了标签，则移除它
+      if (index !== -1) {
+        // 创建新数组并移除指定标签
+        const newSelectedTags = [...this.selectedTags];
+        newSelectedTags.splice(index, 1);
+        
+        // 使用新数组更新状态
+        this.selectedTags = newSelectedTags;
+        console.log(`移除后的标签: ${this.selectedTags}`);
+        
+        // 强制更新视图和数据
+        this.$nextTick(() => {
+          this.$forceUpdate(); // 强制重新渲染
+          this.loadNotes(true); // 重新加载数据
+        });
+      } else {
+        console.warn(`未找到标签: ${tag}，当前标签: ${this.selectedTags}`);
+      }
+    },
+    refreshData() {
+      this.loadNotes(true);
+      this.loadAllTags();
+    },
+    async loadAllTags() {
+      this.isLoadingTags = true;
+      
+      try {
+        const response = await flomoApi.getDetailedTags();
+        
+        if (response) {
+          this.detailedTags = response;
+          
+          // 格式化标签显示
+          this.allTags = this.detailedTags.map(item => {
+            const tag = item.tag;
+            const count = item.count;
+            const latestUpdated = item.latest_updated_at ? new Date(item.latest_updated_at) : null;
+            const formattedDate = latestUpdated ?
+              `${String(latestUpdated.getMonth() + 1).padStart(2, '0')}-${String(latestUpdated.getDate()).padStart(2, '0')}` :
+              '--';
+            const prefix = tag.startsWith('#') ? '' : '#';
+            return `${prefix}${tag}(${count}) ${formattedDate}`;
+          });
+        } else {
+          this.detailedTags = [];
+          this.allTags = [];
+        }
+      } catch (error) {
+        this.detailedTags = [];
+        this.allTags = [];
+      } finally {
+        this.isLoadingTags = false;
+      }
+    },
+    async loadNotes(forceReload = false) {
+      try {
+        if (forceReload) {
+          this.currentOffset = 0;
+          this.hasMore = true;
+          this.notes = [];
+          this.isLoadingMore = true;
+        } else if (this.isLoadingMore || !this.hasMore) {
+          return;
+        } else {
+          this.isLoadingMore = true;
+        }
+        
+        const response = await flomoApi.getNotes({
+          offset: this.currentOffset,
+          limit: 20,
+        });
+        
+        if (response?.data) {
+          const newNotes = response.data;
+          
+          if (newNotes.length < 20) {
+            this.hasMore = false;
+          }
+          
+          if (forceReload) {
+            this.notes = newNotes;
+          } else {
+            this.notes = [...this.notes, ...newNotes];
+          }
+          
+          this.currentOffset += newNotes.length;
+        } else {
+          this.hasMore = false;
+        }
+      } catch (error) {
+        this.hasMore = false;
+      } finally {
+        this.isLoadingMore = false;
+      }
+    },
+    clearTagFilter() {
+      this.selectedTags = []; 
+      this.$nextTick(() => {
+        this.$forceUpdate();
+        this.loadNotes(true); 
+      });
+    }
   },
 }
 </script>
@@ -815,5 +934,217 @@ export default {
     padding: 6px 10px;
     font-size: 13px;
   }
+}
+
+/* 添加标签筛选样式 */
+.current-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 10px;
+  max-width: 60%;
+}
+
+.filter-info {
+  font-size: 14px;
+  color: #666;
+}
+
+:global(.dark-mode) .filter-info {
+  color: #ccc;
+}
+
+.filter-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.filter-tag {
+  background-color: #007bff;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+
+:global(.dark-mode) .filter-tag {
+  background-color: #bd93f9;
+  color: #282a36;
+}
+
+.remove-filter {
+  margin-left: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.remove-filter:hover {
+  opacity: 0.8;
+}
+
+.filter-logic {
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
+}
+
+:global(.dark-mode) .filter-logic {
+  color: #777;
+}
+
+/* 添加标签筛选提示样式 */
+.tag-filter-tip {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+  border-left: 3px solid #007bff;
+  margin-top: 5px;
+}
+
+:global(.dark-mode) .tag-filter-tip {
+  color: #aaa;
+  background-color: #333;
+  border-left-color: #bd93f9;
+}
+
+.tip-badge {
+  background-color: #007bff;
+  color: white;
+  padding: 1px 5px;
+  border-radius: 10px;
+  font-size: 10px;
+  margin-left: 5px;
+  font-weight: bold;
+}
+
+:global(.dark-mode) .tip-badge {
+  background-color: #bd93f9;
+  color: #282a36;
+}
+
+/* 改进的多选样式 */
+.checkbox-container {
+  display: inline-block;
+  position: relative;
+  margin-right: 8px; /* Adjusted from 10px for potentially better alignment */
+  vertical-align: middle;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0; 
+}
+
+.checkbox-container input[type="checkbox"] {
+  opacity: 0;
+  position: absolute;
+}
+
+.checkbox-container label {
+  position: relative;
+  cursor: pointer;
+  padding-left: 25px; /* This might need review if checkbox is not aligned */
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+}
+
+.checkbox-container label:before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #999;
+  background: #fff;
+  border-radius: 3px;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.checkbox-container input[type="checkbox"]:checked + label:before {
+  background: #007bff;
+  border-color: #007bff;
+}
+
+.checkbox-container input[type="checkbox"]:checked + label:after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 6px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  animation: checkmark 0.2s ease-in-out;
+}
+
+@keyframes checkmark {
+  0% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(45deg) scale(1);
+  }
+}
+
+:global(.dark-mode) .checkbox-container label:before {
+  border-color: #6272a4;
+  background: #282a36;
+}
+
+:global(.dark-mode) .checkbox-container input[type="checkbox"]:checked + label:before {
+  background: #bd93f9;
+  border-color: #bd93f9;
+}
+
+:global(.dark-mode) .checkbox-container input[type="checkbox"]:checked + label:after {
+  border-color: #282a36;
+}
+
+/* 确保选中标签的样式 (li[data-selected="true"]) 优先且正确应用 */
+/* 这些样式应该已经在您的 scoped style 中了，请确认它们无误 */
+li[data-selected="true"] {
+  background-color: rgba(0, 123, 255, 0.2) !important;
+  color: #0056b3 !important;
+  font-weight: 600 !important;
+  border-left: 4px solid #0056b3 !important;
+  transition: background-color 0.2s ease, color 0.2s ease, border-left-color 0.2s ease;
+}
+
+li[data-selected="true"].dark-mode { 
+  background-color: rgba(189, 147, 249, 0.25) !important;
+  color: #d1b3ff !important;
+  border-left-color: #bd93f9 !important;
+}
+
+/* 确保复选框容器和标签文本正确对齐 */
+.tag-list li {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.tag-list li:not([data-selected="true"]):hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+:global(.dark-mode) .tag-list li:not([data-selected="true"]):hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.tag-text {
+  flex-grow: 1; 
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

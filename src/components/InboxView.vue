@@ -10,13 +10,14 @@
     <InboxSidebar
       :show-sidebar="showSidebar"
       :all-tags="allTags"
-      :current-tag="currentTag"
+      :selected-tags="selectedTags"
       :is-loading-tags="isLoadingTags"
       :is-dark-mode="isDarkMode"
       :styles="styles"
       @filter-by-tag="filterByTag"
       @clear-tag-filter="clearTagFilter"
       @close-sidebar="handleCloseSidebar"
+      @remove-tag="removeTag"
     />
 
     <main :class="[styles['main-content'], { [styles['dark-mode']]: isDarkMode }]">
@@ -129,7 +130,6 @@ export default {
       isSubmitting: false,
       editContent: '',
       editingNote: null,
-      currentTag: null, // 用于存储当前选中的标签
       allTags: [], // 用于存储所有标签
       isLoadingMore: false,
       currentOffset: 0,
@@ -146,8 +146,7 @@ export default {
       styles: styles, // 将导入的 styles 对象添加到 data 中
       detailedTags: [], // 新增：用于存储从后端获取的详细标签信息
       isDisconnected: false, // 新增：用于追踪网络断开状态
-      // 添加一个变量用于跟踪点击是否来自筛选栏内部
-      sidebarClicked: false,
+      selectedTags: [], // 用于多选标签
     };
   },
   computed: {
@@ -185,18 +184,18 @@ export default {
       }
     },
     sortedNotes() {
-      console.log('当前筛选标签:', this.currentTag);
-      console.log('当前筛选标签:', this.currentTag, '笔记标签:', this.note?.tags);
       let filtered = [...this.notes];
-
+      console.log('笔记总数:', filtered.length);
+      
       // 根据当前选中的标签进行过滤
-      if (this.currentTag) {
+      if (this.selectedTags && this.selectedTags.length > 0) {
         filtered = filtered.filter(note => {
-          console.log('检查笔记:', note.id, '标签:', note.tags);
-          return note?.tags && note.tags.includes(this.currentTag);
+          if (!note?.tags) return false;
+          // 检查笔记是否包含任意选中的标签 (OR 逻辑)
+          return this.selectedTags.some(tag => note.tags.includes(tag));
         });
       }
-
+      
       return [...filtered]
         .filter(note => !!note?.content)
         .sort((a, b) => {
@@ -245,31 +244,6 @@ export default {
     this.loadNotes(true);
     this.loadAllTags(); // 改为加载详细标签
     this.initScrollObserver();
-    
-    // 添加下面的代码到 mounted 钩子
-    console.log('[showSidebar] 组件已挂载，准备设置点击检测');
-    
-    // 为筛选栏添加点击事件监听器，标记点击来自筛选栏内部
-    this.$nextTick(() => {
-      console.group('[showSidebar] 【挂载筛选栏点击检测】');
-      const sidebar = this.$el.querySelector('.sidebar-sidebar, .filter-sidebar');
-      if (sidebar) {
-        console.log('[showSidebar] 成功找到筛选栏元素:', sidebar);
-        sidebar.addEventListener('click', this.handleSidebarClick);
-        console.log('[showSidebar] ==> 已添加筛选栏内部点击事件监听器');
-      } else {
-        console.error('[showSidebar] 未找到筛选栏元素!');
-        // 尝试不同的选择器
-        const allSidebarElements = this.$el.querySelectorAll('aside');
-        console.log('[showSidebar] 找到的所有 aside 元素:', allSidebarElements.length);
-        if (allSidebarElements.length > 0) {
-          console.log('[showSidebar] 第一个 aside 元素:', allSidebarElements[0]);
-          allSidebarElements[0].addEventListener('click', this.handleSidebarClick);
-          console.log('[showSidebar] ==> 已为第一个 aside 元素添加点击事件监听器');
-        }
-      }
-      console.groupEnd();
-    });
   },
   beforeDestroy() {
     // 组件销毁前移除事件监听器
@@ -302,32 +276,51 @@ export default {
       }
     },
     toggleSidebar() {
-      console.group('[showSidebar] 【切换筛选栏】');
-      console.log('[showSidebar] 当前筛选栏状态:', this.showSidebar ? '打开' : '关闭');
       this.showSidebar = !this.showSidebar;
-      console.log('[showSidebar] ==> 筛选栏状态切换为:', this.showSidebar ? '打开' : '关闭');
-      console.groupEnd();
     },
     handleCloseSidebar() {
-      console.group('[showSidebar] 【关闭筛选栏】');
-      console.log('[showSidebar] 当前筛选栏状态:', this.showSidebar ? '打开' : '关闭');
       this.showSidebar = false;
-      console.log('[showSidebar] ==> 筛选栏状态更新为: 关闭');
-      console.groupEnd();
     },
     filterByTag(formattedTag) {
+      console.log(`[多选] 点击标签: ${formattedTag}`);
       // 从格式化后的标签字符串中提取标签名称
-      const tagName = formattedTag.split('(')[0].substring(1);
-      if (this.currentTag === tagName) {
-        this.currentTag = null;
-      } else {
-        this.currentTag = tagName;
+      try {
+        const tagName = formattedTag.split('(')[0].substring(1).trim();
+        console.log(`[多选] 提取的标签名: ${tagName}`);
+        
+        // 检查标签是否已被选中
+        const index = this.selectedTags.indexOf(tagName);
+        console.log(`[多选] 当前选中标签: ${JSON.stringify(this.selectedTags)}, 索引: ${index}`);
+        
+        // 创建新数组以确保Vue能检测到变化
+        const newSelectedTags = [...this.selectedTags];
+        
+        // 切换选中状态
+        if (index !== -1) {
+          // 如果已选中，则移除
+          newSelectedTags.splice(index, 1);
+          console.log(`[多选] 移除标签: ${tagName}`);
+        } else {
+          // 如果未选中，则添加
+          newSelectedTags.push(tagName);
+          console.log(`[多选] 添加标签: ${tagName}`);
+        }
+        
+        // 更新数组
+        this.selectedTags = newSelectedTags;
+        console.log(`[多选] 更新后的选中标签: ${this.selectedTags}`);
+        
+        // 加载符合过滤条件的笔记
+        this.loadNotes(true);
+      } catch (error) {
+        console.error('[多选] 处理标签过滤时出错:', error);
       }
-      console.log('设置 currentTag 为:', this.currentTag);
-      this.loadNotes(true);
     },
     clearTagFilter() {
-      this.currentTag = null;
+      console.log('[多选] 清除所有标签');
+      this.selectedTags = [];
+      
+      // 加载所有笔记
       this.loadNotes(true);
     },
     async loadNotes(initialLoad = true) {
@@ -343,7 +336,7 @@ export default {
           this.hasMore = true;
         }
 
-        const response = await flomoApi.getNotes(50, this.currentOffset, this.currentTag);
+        const response = await flomoApi.getNotes(50, this.currentOffset, this.selectedTags);
         const newNotes = response?.data || [];
 
         if (newNotes.length > 0) {
@@ -811,61 +804,127 @@ export default {
         console.log('[InboxView] sortBy called but sortMethod is already:', newSortMethod, '. No change needed.');
       }
     },
-    // 添加筛选栏内部点击处理方法
-    handleSidebarClick(event) {
-      console.group('[showSidebar] 【筛选栏内部点击】');
-      console.log('[showSidebar] ==> 检测到筛选栏内部点击，事件对象:', event.target);
-      // 阻止事件冒泡，确保不会触发外部点击
-      event.stopPropagation();
-      this.sidebarClicked = true;
-      console.log('[showSidebar] ==> 设置 sidebarClicked 标记为:', this.sidebarClicked);
-      console.groupEnd();
-    },
-    
     // 添加处理外部点击的方法
     handleOutsideClick(event) {
-      console.group('[showSidebar] 【处理外部点击】');
-      console.log('[showSidebar] 检测到点击, 事件对象:', event.target);
-      console.log('[showSidebar] 当前筛选栏状态:', this.showSidebar ? '打开' : '关闭');
-      console.log('[showSidebar] sidebarClicked 标记:', this.sidebarClicked);
-      
-      // 获取 sidebar 元素进行调试
+      // 获取 sidebar 元素
       const sidebarElement = this.$el.querySelector('aside');
-      console.log('[showSidebar] 筛选栏元素:', sidebarElement);
-      console.log('[showSidebar] 筛选栏 className:', sidebarElement ? sidebarElement.className : 'undefined');
       
       // 检查是否点击了侧边栏切换按钮
       const sidebarToggle = this.$el.querySelector(`.${styles['sidebar-toggle']}`);
-      console.log('[showSidebar] 侧边栏切换按钮:', sidebarToggle);
       
       // 检查点击位置是否在侧边栏内部或切换按钮上
       const clickedInSidebar = sidebarElement && sidebarElement.contains(event.target);
       const clickedToggleButton = sidebarToggle && sidebarToggle.contains(event.target);
       
-      console.log('[showSidebar] 点击是否在筛选栏内部?', clickedInSidebar);
-      console.log('[showSidebar] 点击是否在切换按钮上?', clickedToggleButton);
-      
       // 如果点击来自筛选栏内部或切换按钮，不做任何处理
-      if (this.sidebarClicked || clickedToggleButton || clickedInSidebar) {
-        console.log('[showSidebar] ==> 点击来自筛选栏内部或切换按钮，不关闭筛选栏');
-        this.sidebarClicked = false;
-        console.log('[showSidebar] ==> 重置 sidebarClicked 标记为:', this.sidebarClicked);
-        console.groupEnd();
+      if (clickedToggleButton || clickedInSidebar) {
         return;
       }
       
       // 如果筛选栏是展开的，则关闭它
       if (this.showSidebar) {
-        console.log('[showSidebar] ==> 筛选栏是展开状态，且点击在外部，现在关闭它');
         this.showSidebar = false;
-        console.log('[showSidebar] ==> 筛选栏状态更新为:', this.showSidebar ? '打开' : '关闭');
+      }
+    },
+    async fetchNotes(reset = false) {
+      try {
+        if (reset) {
+          this.currentOffset = 0;
+          this.hasMore = true;
+          this.notes = [];
+        }
+        
+        this.isLoadingMore = true;
+        
+        // 构建API参数
+        const params = {
+          limit: 50,
+          offset: this.currentOffset,
+        };
+        
+        // 如果有选中的标签，添加到请求参数
+        if (this.selectedTags.length > 0) {
+          params.tags = this.selectedTags;
+        }
+        
+        const response = await flomoApi.getNotes(params);
+        
+        if (response && response.data) {
+          const newNotes = response.data;
+          
+          if (reset) {
+            this.notes = newNotes;
+          } else {
+            this.notes = [...this.notes, ...newNotes];
+          }
+          
+          this.currentOffset += newNotes.length;
+          this.hasMore = newNotes.length === 50;
+          
+          return true;
+        }
+        
+        return false;
+      } catch (error) {
+        this.hasMore = false;
+        return false;
+      } finally {
+        this.isLoadingMore = false;
+      }
+    },
+    handleNoteListTagClick(tag) {
+      console.log(`[多选] 从笔记列表点击标签: ${tag}`);
+      
+      // 检查标签是否已被选中
+      const index = this.selectedTags.indexOf(tag);
+      console.log(`[多选] 当前选中标签: ${JSON.stringify(this.selectedTags)}, 索引: ${index}`);
+      
+      // 创建新数组以确保Vue能检测到变化
+      const newSelectedTags = [...this.selectedTags];
+      
+      // 切换选中状态
+      if (index !== -1) {
+        // 如果已选中，则移除
+        newSelectedTags.splice(index, 1);
+        console.log(`[多选] 移除标签: ${tag}`);
       } else {
-        console.log('[showSidebar] ==> 筛选栏已经是关闭状态，无需操作');
+        // 如果未选中，则添加
+        newSelectedTags.push(tag);
+        console.log(`[多选] 添加标签: ${tag}`);
       }
       
-      this.sidebarClicked = false;
-      console.log('[showSidebar] ==> 重置 sidebarClicked 标记为:', this.sidebarClicked);
-      console.groupEnd();
+      // 更新数组
+      this.selectedTags = newSelectedTags;
+      console.log(`[多选] 更新后的选中标签: ${this.selectedTags}`);
+      
+      // 确保侧边栏打开
+      if (!this.showSidebar && this.selectedTags.length > 0) {
+        this.showSidebar = true;
+      }
+      
+      // 加载符合过滤条件的笔记
+      this.loadNotes(true);
+    },
+    removeTag(tag) {
+      console.log(`[多选] 移除标签: ${tag}`);
+      // 检查标签是否已存在
+      const index = this.selectedTags.indexOf(tag);
+      
+      // 如果找到了标签，则移除它
+      if (index !== -1) {
+        // 创建新数组并移除指定标签
+        const newSelectedTags = [...this.selectedTags];
+        newSelectedTags.splice(index, 1);
+        
+        // 使用新数组更新状态
+        this.selectedTags = newSelectedTags;
+        console.log(`[多选] 移除后的标签: ${this.selectedTags}`);
+        
+        // 加载符合过滤条件的笔记
+        this.loadNotes(true);
+      } else {
+        console.warn(`[多选] 未找到标签: ${tag}, 当前标签: ${this.selectedTags}`);
+      }
     },
   },
 }

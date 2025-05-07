@@ -121,10 +121,15 @@
     color: #777;
     margin-left: 5px;
     transition: color 0.3s ease;
+    display: inline-block;
+    background-color: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 4px;
   }
   
   .sidebar-header.dark-mode .current-filter {
     color: #f8f8f2;
+    background-color: #44475a;
   }
   
   .sidebar-header .close-btn {
@@ -188,14 +193,18 @@
   }
   
   .tag-list li {
-    padding: 8px 10px;
+    padding: 10px 15px;
     margin-bottom: 5px;
     border-radius: 4px;
     background-color: #f0f0f0;
     color: #333;
     cursor: pointer;
     font-size: 0.9em;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    position: relative;
+    border-left: 4px solid transparent;
   }
   
   .tag-list.dark-mode li {
@@ -203,22 +212,63 @@
     color: #f8f8f2;
   }
   
-  .tag-list li:hover {
-    background-color: #e0e0e0;
-  }
-  
-  .tag-list.dark-mode li:hover {
-    background-color: #6272a4;
-  }
-  
+  /* 悬停和选中样式 */
+  .tag-list li:hover,
+  .active, 
+  .tag-list li[data-selected="true"],
   .tag-list li.active {
-    background-color: #007bff;
-    color: white;
+    background-color: #e0e0e0 !important;
+    color: #007bff !important;
+    font-weight: bold !important;
+    border-left: 4px solid #007bff !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+    position: relative;
+    padding-left: 20px;
+  }
+  
+  .tag-list li:hover::before,
+  .active::before, 
+  .tag-list li[data-selected="true"]::before,
+  .tag-list li.active::before {
+    content: "✓";
+    position: absolute;
+    left: 5px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #007bff;
+  }
+  
+  .tag-list.dark-mode li:hover,
+  .dark-mode .active, 
+  .tag-list.dark-mode li[data-selected="true"],
+  .tag-list.dark-mode li.active {
+    background-color: #6272a4 !important;
+    color: #f8f8f2 !important;
+    border-left-color: #bd93f9 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+  }
+  
+  /* 删除多余的复选框效果 */
+  .tag-list li::before {
+    display: none;
+  }
+  
+  .tag-list.dark-mode li::before {
+    display: none;
+  }
+  
+  .tag-list li.active::after {
+    display: none;
   }
   
   .tag-list.dark-mode li.active {
-    background-color: #bd93f9;
-    color: #282a36;
+    display: flex;
+    align-items: center;
+    background-color: #6272a4 !important;
+    color: #f8f8f2 !important;
+    border-left-color: #bd93f9 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
   }
   
   .clear-filter-btn {
@@ -448,3 +498,41 @@
   .comments-section li:last-child {
     border-bottom: none;
   }
+
+.selected-tags-list {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.selected-tag-item {
+  background-color: #007bff;
+  color: white;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 0.8em;
+  display: flex;
+  align-items: center;
+  margin-right: 5px;
+  margin-bottom: 5px;
+}
+
+.dark-mode .selected-tag-item {
+  background-color: #bd93f9;
+  color: #282a36;
+}
+
+.selected-tag-item .remove-tag {
+  margin-left: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.tag-list.dark-mode li:hover::before,
+.dark-mode .active::before, 
+.tag-list.dark-mode li[data-selected="true"]::before,
+.tag-list.dark-mode li.active::before {
+  color: #f8f8f2;
+}
