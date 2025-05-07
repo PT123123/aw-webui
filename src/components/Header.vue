@@ -409,4 +409,23 @@ export default {
 .navbar-dark .navbar-toggler-icon {
   filter: brightness(2);
 }
+
+// 调整菜单折叠按钮大小
+.navbar-toggler {
+  padding: 0.15rem 0.5rem;  // 减小上下和左右内边距
+  font-size: 1rem;  // 适当减小字体大小
+}
+
+// 调整菜单折叠按钮图标大小
+.navbar-toggler-icon {
+  width: 1.2em;
+  height: 1.2em;
+}
+
+@media (min-width: 992px) {
+  // 大屏幕上隐藏
+  .navbar-toggler {
+    display: none;
+  }
+}
 </style>
