@@ -6,17 +6,62 @@ const api = axios.create({
 })
 
 export default {
-  async getNotes(limit = 50, offset = 0, tag = null) {
+  async getNotes(params = {}) {
     try {
-      const params = { limit, offset };
-      if (tag) {
-        params.tag = tag;
-      }
-      const fullUrl = `${api.defaults.baseURL}/inbox/notes?limit=${limit}&offset=${offset}${tag ? `&tag=${tag}` : ''}`;
+      // 确保 params 是一个对象
+      const queryParams = typeof params === 'object' ? params : { limit: params };
+      
+      // 构建查询参数
+      const { limit = 50, offset = 0, tag, tags, search, sort_by } = queryParams;
+      
+      // 构建参数对象
+      const requestParams = { limit, offset };
+      
+      // 添加可选参数
+      if (tag) requestParams.tag = tag;
+      if (tags) requestParams.tag = Array.isArray(tags) ? tags.join(',') : tags;
+      if (search) requestParams.search = search;
+      if (sort_by) requestParams.sort_by = sort_by;
+      
+      // 记录完整的请求 URL
+      const queryString = new URLSearchParams(requestParams).toString();
+      const fullUrl = `${api.defaults.baseURL}/inbox/notes?${queryString}`;
       console.log('正在请求接口地址:', fullUrl);
-      const response = await api.get('/inbox/notes', { params });
-      console.log('请求成功，响应数据:', response.data);
-      return response;
+      
+      // 发送 GET 请求
+      const response = await api.get('/inbox/notes', { params: requestParams });
+      console.log('请求成功，原始响应数据:', response.data);
+      
+      // 确保以规范格式返回数据
+      let standardizedResponse;
+      if (Array.isArray(response.data)) {
+        // 如果后端返回数组，则包装为标准对象格式
+        standardizedResponse = {
+          notes: response.data,
+          offset: offset + response.data.length,
+          has_more: response.data.length === limit
+        };
+      } else if (response.data && typeof response.data === 'object') {
+        // 如果后端返回对象，确保它有必要的属性
+        standardizedResponse = {
+          notes: response.data.notes || response.data,
+          offset: response.data.offset || (offset + (response.data.notes?.length || 0)),
+          has_more: response.data.has_more !== undefined 
+            ? response.data.has_more 
+            : ((response.data.notes?.length || 0) === limit)
+        };
+      } else {
+        // 未预料的响应格式
+        standardizedResponse = {
+          notes: [],
+          offset: offset,
+          has_more: false
+        };
+        console.warn('意外的响应格式:', response.data);
+      }
+      
+      console.log('标准化后的响应数据:', standardizedResponse);
+      return standardizedResponse;
     } catch (error) {
       console.error(`请求失败 [${api.defaults.baseURL}/inbox/notes]:`, error.response?.data || error.message);
       throw error;

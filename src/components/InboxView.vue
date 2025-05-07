@@ -29,6 +29,7 @@
         @sort-by="sortBy"
         @refresh-data="refreshData"
         @copy-notes="copyAllNotes"
+        @search-notes="handleSearch"
       >
         <template #status-icon>
           <InboxStatusIcon
@@ -150,6 +151,7 @@ export default {
       detailedTags: [], // 新增：用于存储从后端获取的详细标签信息
       isDisconnected: false, // 新增：用于追踪网络断开状态
       selectedTags: [], // 用于多选标签
+      currentSearchTerm: '', // <-- 添加搜索词状态
     };
   },
   computed: {
@@ -188,8 +190,13 @@ export default {
     },
     sortedNotes() {
       let filtered = [...this.notes];
-      console.log('笔记总数:', filtered.length);
+      console.log('笔记总数:', filtered.length, '搜索词:', this.currentSearchTerm);
       
+      // 优先根据搜索词过滤 (如果存在)
+      // 注意: 后端应该已经根据搜索词返回了过滤后的笔记
+      // 如果前端也需要再次过滤或高亮，可以在这里处理
+      // 为简化，我们假设 loadNotes 已经获取了符合搜索条件的笔记
+
       // 根据当前选中的标签进行过滤
       if (this.selectedTags && this.selectedTags.length > 0) {
         filtered = filtered.filter(note => {
@@ -259,6 +266,9 @@ export default {
       }
       next();
     });
+
+    // 添加全局事件监听器，用于监听 Ctrl+F 或 Cmd+F
+    window.addEventListener('keydown', this.handleGlobalSearchHotkey);
   },
   beforeDestroy() {
     // 组件销毁前移除事件监听器
@@ -271,6 +281,10 @@ export default {
         allSidebarElements[0].removeEventListener('click', this.handleSidebarClick);
       }
     }
+  },
+  beforeUnmount() {
+    // 移除全局事件监听器
+    window.removeEventListener('keydown', this.handleGlobalSearchHotkey);
   },
   methods: {
     async handleDeleteNote(noteId) {
@@ -341,56 +355,43 @@ export default {
       // 加载所有笔记
       this.loadNotes(true);
     },
-    async loadNotes(initialLoad = true) {
-      this.isDisconnected = false; // 每次加载前重置断开状态
-
-      if (this.isLoadingMore && !initialLoad) return;
+    async loadNotes(refresh = false) {
+      if (this.isLoadingMore && !refresh) return;
+      console.log('[InboxView] loadNotes called. refresh:', refresh, 'currentSearchTerm:', this.currentSearchTerm);
 
       this.isLoadingMore = true;
+      if (refresh) {
+        this.notes = [];
+        this.currentOffset = 0;
+        this.hasMore = true;
+      }
+
       try {
-        if (initialLoad) {
-          this.notes = [];
-          this.currentOffset = 0;
-          this.hasMore = true;
-        }
-
-        const response = await flomoApi.getNotes(50, this.currentOffset, this.selectedTags);
-        const newNotes = response?.data || [];
-
-        if (newNotes.length > 0) {
-          const processedNotes = newNotes.map(note => {
-            // 尝试从localStorage获取纯文本
-            let plainText = localStorage.getItem(`note_plaintext_${note.id}`);
-            
-            // 如果localStorage中没有，从HTML提取
-            if (!plainText && note.content) {
-              const tempDiv = document.createElement('div');
-              tempDiv.innerHTML = note.content;
-              plainText = tempDiv.textContent || '';
-              
-              // 将提取的纯文本保存到localStorage
-              if (plainText) {
-                localStorage.setItem(`note_plaintext_${note.id}`, plainText);
-              }
-            }
-            
-            return {
-              ...note,
-              plainText: plainText || '', // 添加plainText字段
-              tags: note.tags || []
-            };
-          });
-          
-          this.notes = initialLoad ? processedNotes : [...this.notes, ...processedNotes];
-          this.currentOffset += newNotes.length;
-          this.hasMore = newNotes.length === 50;
+        const params = { 
+          offset: this.currentOffset, 
+          limit: 20, 
+          sort_by: this.sortMethod,
+          search: this.currentSearchTerm || undefined,
+          tags: this.selectedTags.length > 0 ? this.selectedTags.join(',') : undefined,
+        };
+        console.log('[InboxView] Fetching notes with params:', params);
+        const response = await flomoApi.getNotes(params);
+        console.log('[InboxView] API standardized response:', response);
+        
+        // 处理标准化后的响应数据
+        if (response && response.notes) {
+          this.notes = refresh ? response.notes : [...this.notes, ...response.notes];
+          this.currentOffset = response.offset;
+          this.hasMore = response.has_more;
+          console.log(`[InboxView] Notes loaded. Total: ${this.notes.length}, HasMore: ${this.hasMore}`);
         } else {
+          console.warn('[InboxView] Unexpected response format:', response);
           this.hasMore = false;
         }
       } catch (error) {
-        console.error('加载笔记失败:', error);
-        this.hasMore = false;
-        this.isDisconnected = true; // 捕获到网络错误时，设置断开状态
+        console.error('[InboxView] 获取笔记失败:', error);
+        this.isDisconnected = true; 
+        this.showError('获取笔记失败，请检查网络连接');
       } finally {
         this.isLoadingMore = false;
       }
@@ -436,13 +437,12 @@ export default {
     // 移除 processTags 方法，因为现在由后端处理
 
     refreshData() {
-      console.groupCollapsed('[InboxView] 手动刷新数据 - 开始');
-      try {
-        this.loadNotes(true);
-        this.loadAllTags(); // 同时刷新标签数据
-      } finally {
-        console.groupEnd();
-      }
+      console.log('[InboxView] refreshData called');
+      // 刷新时，如果当前有搜索词，应该保持搜索状态刷新
+      // 或者，定义刷新是否清除搜索词
+      // 当前行为: 保持搜索词刷新
+      this.loadNotes(true);
+      this.loadAllTags();
     },
     handleEditNote(note) {
       console.log('准备编辑笔记', note.id);
@@ -1072,6 +1072,32 @@ export default {
           }, 1500);
         }
       }
+    },
+    handleGlobalSearchHotkey(event) {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+        event.preventDefault();
+        // 尝试聚焦到 InboxControlsBar 中的搜索框
+        // 这需要 InboxControlsBar 暴露一个方法或通过 ref 来访问输入框
+        // 一个简单的方式是让用户知道搜索功能在那里，或者通过 prop 控制其焦点
+        console.log('Ctrl+F pressed - placeholder for focusing search input');
+        // 你可能需要通过 ref 获取 InboxControlsBar 实例并调用其内部方法来聚焦搜索框
+        // 或者让 InboxControlsBar 自身处理快捷键并 focus
+      }
+    },
+    handleSearch(searchTerm) {
+      console.log('[InboxView] Search triggered with term:', searchTerm);
+      this.currentSearchTerm = searchTerm.trim();
+      // 如果是空字符串，视为清除搜索
+      if (!this.currentSearchTerm) {
+        console.log('[InboxView] Clearing search');
+      }
+      this.loadNotes(true); // 重新加载笔记，传递搜索词
+    },
+    clearSearch() { // 可选: 添加清除搜索的方法
+      this.currentSearchTerm = '';
+      this.loadNotes(true);
+      // 你可能还需要清除 InboxControlsBar 中的输入框内容
+      // 这可以通过 ref 调用子组件方法或让子组件监听 currentSearchTerm prop
     },
   },
 }

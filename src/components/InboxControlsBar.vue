@@ -26,6 +26,43 @@
     >
       刷新
     </button>
+    <!-- Search Button and Input -->
+    <div :class="[styles['search-container'], { [styles['dark-mode']]: isDarkMode }]">
+      <!-- 搜索输入框，只在showSearchInput为true时显示 -->
+      <div v-if="showSearchInput" class="search-input-group">
+        <input
+          type="text"
+          v-model="searchTerm"
+          placeholder="搜索笔记..."
+          @keyup.enter="onSearch"
+          ref="searchInput"
+          :class="[styles['search-input'], { [styles['dark-mode']]: isDarkMode }]"
+        />
+        <button
+          @click="onSearch"
+          :class="[styles['search-button'], { [styles['dark-mode']]: isDarkMode }]"
+          title="搜索"
+        >
+          🔍
+        </button>
+        <button
+          @click="cancelSearch"
+          :class="[styles['cancel-button'], { [styles['dark-mode']]: isDarkMode }]"
+          title="取消搜索"
+        >
+          ✖
+        </button>
+      </div>
+      <!-- 搜索图标按钮，点击后显示搜索输入框 -->
+      <button
+        v-else
+        @click="toggleSearchInput"
+        :class="[styles['search-icon-button'], { [styles['dark-mode']]: isDarkMode }]"
+        title="搜索"
+      >
+        🔍
+      </button>
+    </div>
   </div>
 </template>
 
@@ -37,12 +74,38 @@ export default {
     isDarkMode: Boolean,
     styles: Object
   },
+  data() {
+    return {
+      searchTerm: '',
+      showSearchInput: false, // 控制搜索输入框的显示状态
+    };
+  },
   methods: {
     toggleSortMethod() {
       console.log('[InboxControlsBar] toggleSortMethod called. Current sortMethod prop:', this.sortMethod);
       const newSortMethod = this.sortMethod === 'created' ? 'updated' : 'created';
       console.log('[InboxControlsBar] Emitting event "sort-by" with value:', newSortMethod);
       this.$emit('sort-by', newSortMethod);
+    },
+    toggleSearchInput() {
+      this.showSearchInput = true;
+      // 在下一个DOM更新周期后聚焦输入框
+      this.$nextTick(() => {
+        if (this.$refs.searchInput) {
+          this.$refs.searchInput.focus();
+        }
+      });
+    },
+    onSearch() {
+      if (this.searchTerm.trim()) {
+        this.$emit('search-notes', this.searchTerm);
+      }
+    },
+    cancelSearch() {
+      this.searchTerm = '';
+      this.showSearchInput = false;
+      // 如果当前有搜索词，触发一个空搜索来清除搜索结果
+      this.$emit('search-notes', '');
     }
   }
 };
@@ -113,6 +176,77 @@ export default {
   border-color: #505362;
 }
 
+/* Search specific styles */
+.search-container {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+}
+
+.search-input-group {
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-right: 5px;
+  font-size: 14px;
+  width: 200px;
+  transition: width 0.3s ease;
+}
+
+.search-input.dark-mode {
+  background-color: #282a36;
+  color: #f0f0f0;
+  border-color: #44475a;
+}
+
+.search-button, .search-icon-button, .cancel-button {
+  padding: 8px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 5px;
+}
+
+.search-button, .search-icon-button {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.cancel-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.search-button.dark-mode, .search-icon-button.dark-mode {
+  background-color: #388e3c;
+}
+
+.cancel-button.dark-mode {
+  background-color: #d32f2f;
+}
+
+.search-button:hover, .search-icon-button:hover {
+  background-color: #45a049;
+}
+
+.cancel-button:hover {
+  background-color: #e53935;
+}
+
+.search-button.dark-mode:hover, .search-icon-button.dark-mode:hover {
+  background-color: #2e7d32;
+}
+
+.cancel-button.dark-mode:hover {
+  background-color: #c62828;
+}
+
 /* 响应式调整 */
 @media (max-width: 480px) {
   .sort-toggle-btn,
@@ -139,6 +273,20 @@ export default {
   .copy-btn::before {
     content: "📋";
     font-size: 16px;
+  }
+  
+  /* Adjust search for small screens */
+  .search-container {
+    margin-left: 5px; /* Reduce margin */
+  }
+  .search-input {
+    padding: 6px 8px;
+    font-size: 13px;
+    max-width: 100px; /* Limit width to prevent overflow */
+  }
+  .search-button {
+    padding: 6px 8px;
+    font-size: 13px;
   }
 }
 </style>
