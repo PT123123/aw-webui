@@ -1,5 +1,5 @@
 <template>
-  <div :class="[styles['app-container-modified'], { [styles['dark-mode']]: isDarkMode }]">
+  <div :class="[styles['app-container-modified'], { [styles['dark-mode']]: isDarkMode }]" @click="handleOutsideClick">
     <div
       :class="[styles['sidebar-toggle'], { [styles['dark-mode']]: isDarkMode }]"
       @click="toggleSidebar"
@@ -200,6 +200,8 @@ export default {
       comments: [], // 存储评论列表
       styles: styles, // 将导入的 styles 对象添加到 data 中
       detailedTags: [], // 新增：用于存储从后端获取的详细标签信息
+      // 添加一个变量用于跟踪点击是否来自筛选栏内部
+      sidebarClicked: false,
     };
   },
   computed: {
@@ -247,6 +249,31 @@ export default {
     editContent(newValue) {
       this.handleInput(newValue); 
     },
+    // 添加对showSidebar的监视，以便调试CSS类的变化
+    showSidebar(newVal, oldVal) {
+      console.group('[showSidebar] 【筛选栏状态变化】');
+      console.log(`[showSidebar] 筛选栏状态从 ${oldVal ? '打开' : '关闭'} 变为 ${newVal ? '打开' : '关闭'}`);
+      
+      // 在下一个DOM更新周期检查筛选栏的样式类
+      this.$nextTick(() => {
+        const sidebar = this.$el.querySelector('aside');
+        if (sidebar) {
+          console.log('[showSidebar] 筛选栏样式类:', sidebar.className);
+          // 检查是否包含sidebar-open类
+          const hasSidebarOpenClass = sidebar.classList.contains(styles['sidebar-open']);
+          console.log('[showSidebar] 是否包含sidebar-open类?', hasSidebarOpenClass);
+          console.log('[showSidebar] showSidebar状态与sidebar-open类是否一致?', newVal === hasSidebarOpenClass);
+          
+          if (newVal !== hasSidebarOpenClass) {
+            console.error('[showSidebar] 警告: showSidebar状态与实际CSS类不一致!');
+          }
+        } else {
+          console.error('[showSidebar] 无法找到筛选栏元素!');
+        }
+      });
+      
+      console.groupEnd();
+    },
   },
   created() {
     console.log('[InboxView] 组件被导入');
@@ -256,8 +283,33 @@ export default {
     this.loadNotes(true);
     this.loadAllTags(); // 改为加载详细标签
     this.initScrollObserver();
+    
+    // 为筛选栏添加点击事件监听器，标记点击来自筛选栏内部
+    this.$nextTick(() => {
+      console.group('[showSidebar] 【挂载筛选栏点击检测】');
+      const sidebar = this.$el.querySelector('aside');
+      if (sidebar) {
+        console.log('[showSidebar] 成功找到筛选栏元素:', sidebar);
+        sidebar.addEventListener('click', this.handleSidebarClick);
+        console.log('[showSidebar] ==> 已添加筛选栏内部点击事件监听器');
+        
+        // 测试 class 选择器是否能匹配到元素
+        const sidebarToggle = this.$el.querySelector(`.${styles['sidebar-toggle']}`);
+        console.log('[showSidebar] 能否找到筛选栏切换按钮?', !!sidebarToggle);
+        console.log('[showSidebar] 筛选栏切换按钮:', sidebarToggle);
+      } else {
+        console.error('[showSidebar] 无法找到筛选栏元素!');
+      }
+      console.groupEnd();
+    });
   },
-  // ...
+  beforeDestroy() {
+    // 组件销毁前移除事件监听器
+    const sidebar = this.$el.querySelector('aside');
+    if (sidebar) {
+      sidebar.removeEventListener('click', this.handleSidebarClick);
+    }
+  },
   methods: {
     handleEditNote(note) {
       this.editingNote = { ...note }; 
@@ -561,6 +613,80 @@ export default {
       if (this.sortMethod === method) return;
       // 否则切换到请求的方法
       this.sortMethod = method;
+    },
+    // 添加处理点击筛选栏内部的方法
+    handleSidebarClick(event) {
+      console.group('[showSidebar] 【筛选栏内部点击】');
+      console.log('[showSidebar] ==> 检测到筛选栏内部点击，事件对象:', event.target);
+      // 阻止事件冒泡，确保不会触发外部点击
+      event.stopPropagation();
+      this.sidebarClicked = true;
+      console.log('[showSidebar] ==> 设置 sidebarClicked 标记为:', this.sidebarClicked);
+      console.groupEnd();
+    },
+    
+    // 添加处理外部点击的方法
+    handleOutsideClick(event) {
+      console.group('[showSidebar] 【处理外部点击】');
+      console.log('[showSidebar] 检测到点击, 事件对象:', event.target);
+      console.log('[showSidebar] 当前筛选栏状态:', this.showSidebar ? '打开' : '关闭');
+      console.log('[showSidebar] sidebarClicked 标记:', this.sidebarClicked);
+      
+      // 获取 aside 元素进行调试
+      const asideElement = this.$el.querySelector('aside');
+      console.log('[showSidebar] 筛选栏元素:', asideElement);
+      console.log('[showSidebar] 筛选栏 className:', asideElement ? asideElement.className : 'undefined');
+      
+      // 更详细地检查点击事件是否在筛选栏内部
+      const isInsideAside = asideElement ? asideElement.contains(event.target) : false;
+      console.log('[showSidebar] 点击是否在筛选栏内部 (使用 contains)?', isInsideAside);
+      
+      // 检查是否点击了筛选栏切换按钮
+      const toggleElement = this.$el.querySelector(`.${styles['sidebar-toggle']}`);
+      console.log('[showSidebar] 切换按钮元素:', toggleElement);
+      const isToggleButton = toggleElement ? toggleElement.contains(event.target) : false;
+      console.log('[showSidebar] 点击是否在切换按钮上 (使用 contains)?', isToggleButton);
+      
+      // 使用两种方法检查
+      const clickedToggle = isToggleButton || event.target.closest(`.${styles['sidebar-toggle']}`) || event.target.matches(`.${styles['sidebar-toggle']}`);
+      console.log('[showSidebar] 点击了切换按钮 (组合检查)?', clickedToggle);
+      
+      // 检查是否点击了筛选栏内部 (使用多种方法)
+      const clickedAside = isInsideAside || event.target.closest('aside');
+      console.log('[showSidebar] 点击了筛选栏内部 (组合检查)?', !!clickedAside);
+      
+      // 如果点击来自筛选栏内部或筛选栏折叠按钮，不做任何处理
+      if (this.sidebarClicked || clickedToggle || clickedAside) {
+        console.log('[showSidebar] ==> 点击来自筛选栏内部或切换按钮，不关闭筛选栏');
+        this.sidebarClicked = false;
+        console.log('[showSidebar] ==> 重置 sidebarClicked 标记为:', this.sidebarClicked);
+        console.groupEnd();
+        return;
+      }
+      
+      // 如果筛选栏是展开的，则关闭它
+      if (this.showSidebar) {
+        console.log('[showSidebar] ==> 筛选栏是展开状态，且点击在外部，现在关闭它');
+        this.showSidebar = false;
+        console.log('[showSidebar] ==> 筛选栏状态更新为:', this.showSidebar ? '打开' : '关闭');
+      } else {
+        console.log('[showSidebar] ==> 筛选栏已经是关闭状态，无需操作');
+      }
+      
+      this.sidebarClicked = false;
+      console.log('[showSidebar] ==> 重置 sidebarClicked 标记为:', this.sidebarClicked);
+      console.groupEnd();
+    },
+    
+    // 保持原有的toggleSidebar方法，但添加更多日志
+    toggleSidebar() {
+      console.group('[showSidebar] 【切换筛选栏】');
+      console.log('[showSidebar] 当前筛选栏状态:', this.showSidebar ? '打开' : '关闭');
+      
+      this.showSidebar = !this.showSidebar;
+      
+      console.log('[showSidebar] ==> 筛选栏状态切换为:', this.showSidebar ? '打开' : '关闭');
+      console.groupEnd();
     },
   },
 }
