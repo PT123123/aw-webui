@@ -7,6 +7,7 @@
   color: #333; /* Dark text by default */
   transition: background-color 0.3s ease, color 0.3s ease;
   width: 100%; /* 添加这一行，设置宽度为 100% */
+  position: relative; /* 添加相对定位，作为筛选栏的定位参考 */
 }
 
 .app-container-modified.dark-mode {
@@ -17,21 +18,23 @@
   
   /* Sidebar Toggle Button */
   .sidebar-toggle {
-    position: fixed;
+    position: fixed; /* 使用固定定位，确保总是可见 */
     left: 0;
     top: 50%;
     transform: translateY(-50%);
-    z-index: 1050; /* Higher than sidebar potentially */
-    width: 30px; /* Smaller toggle */
+    z-index: 9999; /* 提高z-index确保在其他元素之上 */
+    width: 30px;
     height: 50px;
     background: #4CAF50;
-    border-radius: 0 8px 8px 0; /* Rounded corners on the right */
+    border-radius: 0 8px 8px 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
     box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    opacity: 1; /* 确保可见 */
+    visibility: visible; /* 确保可见 */
   }
   .app-container-modified.dark-mode .sidebar-toggle {
     background: #333; /* Dark background for toggle in dark mode */
@@ -55,18 +58,21 @@
     background: #f8f9fa;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
     transition: transform 0.3s ease, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-    transform: translateX(-240px);
-    z-index: 1000;
+    transform: translateX(-240px); /* 默认隐藏 */
+    z-index: 9000; /* 低于切换按钮，但高于大多数元素 */
     display: flex;
     flex-direction: column;
     border-right: 1px solid #e0e0e0;
-    position: fixed; /* 修改为fixed定位 */
+    position: fixed; /* 使用固定定位 */
     top: 0;
     left: 0;
-    overflow: visible; /* 确保不会被裁剪 */
+    overflow-y: auto; /* 允许内容溢出时滚动 */
+    overflow-x: hidden; /* 防止水平溢出 */
+    visibility: visible; /* 确保可见 */
+    opacity: 1; /* 确保可见 */
   }
   
-  /* 确保父容器不会裁剪内容 */
+  /* 确保父容器不会裁剪内容并且是相对定位 */
   .app-container-modified {
     overflow: visible; /* 添加这行 */
     /* ... 其他样式保持不变 ... */
@@ -79,7 +85,7 @@
   }
   
   .filter-sidebar.sidebar-open {
-    transform: translateX(0); /* 滑入 */
+    transform: translateX(0); /* 显示侧边栏 */
   }
   
   .sidebar-content {

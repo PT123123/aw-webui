@@ -8,6 +8,7 @@
     </div>
 
     <InboxSidebar
+      v-if="$route.path.includes('/inbox')"
       :show-sidebar="showSidebar"
       :all-tags="allTags"
       :selected-tags="selectedTags"
@@ -61,13 +62,14 @@
     </main>
 
     <InboxFAB
+      v-if="$route.path.includes('/inbox')"
       :is-dark-mode="isDarkMode"
       :styles="styles"
       @fab-click="showInput = true"
     />
 
     <div
-      v-if="showInput || isAddingComment"
+      v-if="(showInput || isAddingComment) && $route.path.includes('/inbox')"
       style="position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:1200;max-width:100vw;width:600px;background:#222;border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,0.18);padding:24px 20px 16px 20px;pointer-events:auto;"
     >
       <div v-if="isAddingComment" style="color:#fff;margin-bottom:10px;font-size:16px;font-weight:500;">
@@ -244,6 +246,18 @@ export default {
     this.loadNotes(true);
     this.loadAllTags(); // 改为加载详细标签
     this.initScrollObserver();
+    
+    // 确保只在inbox路径下显示筛选栏
+    this.updateSidebarVisibility();
+    // 监听路由变化以更新筛选栏的可见性
+    this.$router.beforeEach((to, from, next) => {
+      if (to.path.includes('/inbox')) {
+        this.updateSidebarVisibility();
+      } else {
+        this.showSidebar = false;
+      }
+      next();
+    });
   },
   beforeDestroy() {
     // 组件销毁前移除事件监听器
@@ -276,7 +290,10 @@ export default {
       }
     },
     toggleSidebar() {
-      this.showSidebar = !this.showSidebar;
+      // 只在inbox路径下允许切换侧边栏
+      if (this.$route.path.includes('/inbox')) {
+        this.showSidebar = !this.showSidebar;
+      }
     },
     handleCloseSidebar() {
       this.showSidebar = false;
@@ -806,6 +823,11 @@ export default {
     },
     // 添加处理外部点击的方法
     handleOutsideClick(event) {
+      // 如果不在inbox路径下，不处理侧边栏点击事件
+      if (!this.$route.path.includes('/inbox')) {
+        return;
+      }
+      
       // 获取 sidebar 元素
       const sidebarElement = this.$el.querySelector('aside');
       
@@ -924,6 +946,13 @@ export default {
         this.loadNotes(true);
       } else {
         console.warn(`[多选] 未找到标签: ${tag}, 当前标签: ${this.selectedTags}`);
+      }
+    },
+    updateSidebarVisibility() {
+      // 只在inbox路径下允许显示筛选栏
+      const isInboxRoute = this.$route.path.includes('/inbox');
+      if (!isInboxRoute) {
+        this.showSidebar = false;
       }
     },
   },

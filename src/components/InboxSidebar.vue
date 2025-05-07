@@ -1,5 +1,8 @@
 <template>
-  <aside :class="[styles['filter-sidebar'], { [styles['sidebar-open']]: showSidebar, [styles['dark-mode']]: isDarkMode }]">
+  <aside 
+    v-if="$route.path.includes('/inbox')"
+    :class="[styles['filter-sidebar'], { [styles['sidebar-open']]: showSidebar, [styles['dark-mode']]: isDarkMode }]"
+  >
     <div :class="[styles['sidebar-content'], { [styles['dark-mode']]: isDarkMode }]">
       <div :class="[styles['sidebar-header'], { [styles['dark-mode']]: isDarkMode }]">
         <h3>筛选选项</h3>
@@ -90,6 +93,11 @@ export default {
     isTagSelected(tag) {
       if (!this.selectedTags || !this.selectedTags.length) return false;
       
+      // 如果不在inbox路径下，总是返回false
+      if (!window.location.pathname.includes('/inbox')) {
+        return false;
+      }
+      
       // 从格式化后的标签字符串中提取标签名称
       try {
         const tagName = tag.split('(')[0].substring(1).trim();
@@ -98,6 +106,12 @@ export default {
         console.error('isTagSelected错误:', error);
         return false;
       }
+    }
+  },
+  created() {
+    // 确保只在inbox路径下显示筛选栏
+    if (!this.$route.path.includes('/inbox')) {
+      this.$emit('close-sidebar');
     }
   }
 };

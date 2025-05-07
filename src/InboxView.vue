@@ -7,7 +7,10 @@
       <span :class="[styles['icon'], { [styles['open']]: !showSidebar }]">◀</span>
     </div>
 
-    <aside :class="[styles['filter-sidebar'], { [styles['sidebar-open']]: showSidebar, [styles['dark-mode']]: isDarkMode }]">
+    <aside 
+      v-if="$route.path.includes('/inbox')"
+      :class="[styles['filter-sidebar'], { [styles['sidebar-open']]: showSidebar, [styles['dark-mode']]: isDarkMode }]"
+    >
       <div :class="[styles['sidebar-content'], { [styles['dark-mode']]: isDarkMode }]">
         <div :class="[styles['sidebar-header'], { [styles['dark-mode']]: isDarkMode }]">
           <h3>筛选选项</h3>
@@ -648,6 +651,11 @@ export default {
       }
     },
     handleOutsideClick(event) {
+      // 只在inbox路径下处理点击事件
+      if (!window.location.pathname.includes('/inbox')) {
+        return;
+      }
+      
       // 检查是否点击的是侧边栏或切换按钮
       const sidebar = this.$el.querySelector('aside');
       const toggleButton = this.$el.querySelector(`.${styles['sidebar-toggle']}`);
@@ -663,12 +671,29 @@ export default {
     },
     toggleSidebar() {
       console.log('切换侧边栏状态');
-      this.showSidebar = !this.showSidebar;
+      if (window.location.pathname.includes('/inbox')) {
+        this.showSidebar = !this.showSidebar;
+      } else {
+        // 如果不在inbox路径下，自动导航到inbox页面并打开侧边栏
+        this.$router.push('/inbox');
+        // 等待路由切换完成后再打开侧边栏
+        this.$nextTick(() => {
+          this.showSidebar = true;
+        });
+      }
     },
     handleCloseSidebar() {
-      this.showSidebar = false;
+      // 只在inbox路径下生效
+      if (window.location.pathname.includes('/inbox')) {
+        this.showSidebar = false;
+      }
     },
     handleNoteListTagClick(tag) {
+      // 只在inbox路径下处理标签点击
+      if (!window.location.pathname.includes('/inbox')) {
+        return;
+      }
+      
       console.log(`从笔记列表点击标签: ${tag}`);
       
       // 检查标签是否已被选中
