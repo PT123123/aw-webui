@@ -1,11 +1,11 @@
 <template lang="pug">
 div(:class="{'fixed-top-padding': fixedTopMenu}")
-  b-navbar.aw-navbar(toggleable="lg" :fixed="fixedTopMenu ? 'top' : null" ref="navbar")
+  b-navbar.aw-navbar.navbar-dark(toggleable="lg" :fixed="fixedTopMenu ? 'top' : null" ref="navbar")
     // Brand on mobile
     b-navbar-nav.d-block.d-lg-none
       b-navbar-brand(to="/" style="background-color: transparent;")
         img.aligh-middle(src="/logo.png" style="height: 1.5em;")
-        span.ml-2.align-middle(style="font-size: 1em; color: #000;") ActivityWatch
+        span.ml-2.align-middle(style="font-size: 1em; color: #e9ebf0;") ActivityWatch
 
     b-navbar-toggle(target="nav-collapse")
 
@@ -34,7 +34,7 @@ div(:class="{'fixed-top-padding': fixedTopMenu}")
             icon(:name="view.icon")
             | {{ view.name }}
 
-        b-nav-item(to="/timeline" style="font-color: #000;")
+        b-nav-item(to="/timeline")
           div.px-2.px-lg-1
             icon(name="stream")
             | Timeline
@@ -54,7 +54,7 @@ div(:class="{'fixed-top-padding': fixedTopMenu}")
       b-navbar-nav.abs-center.d-none.d-lg-block
         b-navbar-brand(to="/" style="background-color: transparent;")
           img.ml-0.aligh-middle(src="/logo.png" style="height: 1.5em;")
-          span.ml-2.align-middle(style="font-size: 1.0em; color: #000;") ActivityWatch
+          span.ml-2.align-middle(style="font-size: 1.0em; color: #e9ebf0;") ActivityWatch
 
       b-navbar-nav.ml-auto
         b-nav-item-dropdown
@@ -96,8 +96,35 @@ div(:class="{'fixed-top-padding': fixedTopMenu}")
 </template>
 
 <style lang="scss" scoped>
+@import '../style/globals';
+
 .fixed-top-padding {
   padding-bottom: 3.5em;
+}
+
+.aw-navbar {
+  background-color: #1a1d24 !important;
+  border: solid #282c32;
+  border-width: 0 0 1px 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+}
+
+.nav-item {
+  align-items: center;
+
+  margin-left: 0.2em;
+  margin-right: 0.2em;
+  border-radius: 0.5em;
+
+  &:hover {
+    background-color: #282c32;
+  }
+}
+
+.abs-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 </style>
 
@@ -330,9 +357,10 @@ export default {
 @import '../style/globals';
 
 .aw-navbar {
-  background-color: white;
-  border: solid $lightBorderColor;
+  background-color: #1a1d24 !important;
+  border: solid #282c32;
   border-width: 0 0 1px 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
 }
 
 .nav-item {
@@ -343,7 +371,7 @@ export default {
   border-radius: 0.5em;
 
   &:hover {
-    background-color: #ddd;
+    background-color: #282c32;
   }
 }
 
@@ -358,7 +386,27 @@ export default {
 // Needed because dropdown somehow doesn't properly work with scoping
 .nav-item {
   .nav-link {
-    color: #555 !important;
+    color: #e9ebf0 !important;
   }
+}
+
+// 黑暗模式下拉菜单样式
+.dropdown-menu {
+  background-color: #1a1d24 !important;
+  border-color: #282c32 !important;
+}
+
+.dropdown-item {
+  color: #e9ebf0 !important;
+  
+  &:hover, &:focus {
+    background-color: #282c32 !important;
+    color: #fff !important;
+  }
+}
+
+// 适配导航栏切换按钮
+.navbar-dark .navbar-toggler-icon {
+  filter: brightness(2);
 }
 </style>
