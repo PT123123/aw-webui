@@ -11,6 +11,15 @@
       </button>
     </div>
     <button
+      @click="() => $emit('copy-notes')"
+      data-testid="copy-btn"
+      class="copy-btn"
+      :class="{ 'dark-mode': isDarkMode }"
+      title="复制所有笔记"
+    >
+      📋 复制
+    </button>
+    <button
       @click="() => $emit('refresh-data')"
       data-testid="refresh-btn"
       :class="[styles['refresh-btn'], { [styles['dark-mode']]: isDarkMode }]"
@@ -53,6 +62,34 @@ export default {
   text-align: center;
 }
 
+.copy-btn {
+  padding: 8px 15px;
+  background-color: #1e88e5; /* 蓝色背景 */
+  color: #ffffff; /* 白色文字 */
+  border: 1px solid #0d47a1; /* 深蓝色边框 */
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 10px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.copy-btn:hover {
+  background-color: #1976d2; /* 悬停时稍深的蓝色 */
+  border-color: #0d47a1;
+}
+
+.copy-btn.dark-mode {
+  background-color: #2979ff; /* 暗黑模式下的蓝色 */
+  color: #f0f0f0;
+  border: 1px solid #1565c0;
+}
+
+.copy-btn.dark-mode:hover {
+  background-color: #2962ff; /* 暗黑模式悬停颜色 */
+  border-color: #0d47a1;
+}
+
 .sort-toggle-btn:hover {
   background-color: #444444; /* 悬停时稍亮一些的深灰色 */
   border-color: #666666;
@@ -78,7 +115,8 @@ export default {
 
 /* 响应式调整 */
 @media (max-width: 480px) {
-  .sort-toggle-btn {
+  .sort-toggle-btn,
+  .copy-btn {
     min-width: auto;
     padding: 6px 10px;
     font-size: 13px;
@@ -91,6 +129,15 @@ export default {
   
   .sort-toggle-btn::before {
     content: attr(data-icon);
+    font-size: 16px;
+  }
+  
+  .copy-btn {
+    font-size: 0;
+  }
+  
+  .copy-btn::before {
+    content: "📋";
     font-size: 16px;
   }
 }

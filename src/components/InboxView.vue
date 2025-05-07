@@ -28,6 +28,7 @@
         :styles="styles"
         @sort-by="sortBy"
         @refresh-data="refreshData"
+        @copy-notes="copyAllNotes"
       >
         <template #status-icon>
           <InboxStatusIcon
@@ -953,6 +954,123 @@ export default {
       const isInboxRoute = this.$route.path.includes('/inbox');
       if (!isInboxRoute) {
         this.showSidebar = false;
+      }
+    },
+    async copyAllNotes() {
+      if (!this.sortedNotes || this.sortedNotes.length === 0) {
+        console.warn('没有可复制的笔记');
+        // 显示状态图标为错误状态
+        const originalIconClass = this.statusIconClass;
+        const originalIconContent = this.statusIconContent;
+        this.statusIconClass = 'status-error';
+        this.statusIconContent = '❌';
+        
+        setTimeout(() => {
+          this.statusIconClass = originalIconClass;
+          this.statusIconContent = originalIconContent;
+        }, 1500);
+        return;
+      }
+      
+      console.log('开始复制筛选后的笔记，笔记数量:', this.sortedNotes.length);
+      
+      // 按指定格式构建文本
+      let copyText = '';
+      this.sortedNotes.forEach((note) => {
+        // 获取修改时间或创建时间
+        const dateStr = note.updated_at || note.created_at;
+        const date = new Date(dateStr);
+        
+        // 格式化为YYYY/MM/DD HH:MM
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const formattedDate = `${year}/${month}/${day} ${hours}:${minutes}`;
+        
+        // 获取笔记的纯文本内容
+        let plainText = note.plainText || '';
+        
+        // 如果没有plainText，尝试从content中提取
+        if (!plainText && note.content) {
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = note.content;
+          plainText = tempDiv.textContent || '';
+        }
+        
+        // 添加到复制文本中，确保格式为【修改时间∣文字内容】
+        copyText += `${formattedDate}∣${plainText}\n`;
+      });
+      
+      // 使用clipboard API复制到剪贴板
+      try {
+        // 保存原始状态值
+        const originalIconClass = this.statusIconClass;
+        const originalIconContent = this.statusIconContent;
+        
+        // 设置为复制中状态
+        this.statusIconClass = 'status-syncing';
+        this.statusIconContent = '📋';
+        
+        // 延迟1秒再执行复制，让用户能看到复制图标
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        await navigator.clipboard.writeText(copyText);
+        console.log('笔记已复制到剪贴板');
+        
+        // 设置为复制成功状态
+        this.statusIconClass = 'status-connected';
+        this.statusIconContent = '✅';
+        
+        // 恢复原始状态
+        setTimeout(() => {
+          this.statusIconClass = originalIconClass;
+          this.statusIconContent = originalIconContent;
+        }, 1500);
+      } catch (err) {
+        console.error('复制失败:', err);
+        
+        // 显示错误图标
+        this.statusIconClass = 'status-error';
+        this.statusIconContent = '❌';
+        
+        // 尝试使用备用方法
+        try {
+          const textArea = document.createElement('textarea');
+          textArea.value = copyText;
+          textArea.style.position = 'fixed';
+          textArea.style.left = '-999999px';
+          textArea.style.top = '-999999px';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          
+          if (successful) {
+            console.log('使用备用方法复制成功');
+            // 设置为复制成功状态
+            this.statusIconClass = 'status-connected';
+            this.statusIconContent = '✅';
+          } else {
+            console.error('备用复制方法也失败了');
+          }
+          
+          // 恢复原始状态
+          setTimeout(() => {
+            this.statusIconClass = originalIconClass;
+            this.statusIconContent = originalIconContent;
+          }, 1500);
+        } catch (fallbackErr) {
+          console.error('备用复制方法出错:', fallbackErr);
+          
+          // 恢复原始状态
+          setTimeout(() => {
+            this.statusIconClass = originalIconClass;
+            this.statusIconContent = originalIconContent;
+          }, 1500);
+        }
       }
     },
   },
