@@ -23,24 +23,26 @@ export default {
     }
   },
   async deleteNote(noteId) {
-      try {
-        const response = await fetch(`/inbox/notes/${noteId}`, {
-          method: 'DELETE',
-        });
+    try {
+      const response = await fetch(`/inbox/notes/${noteId}`, {
+        method: 'DELETE',
+      });
 
-        if (response.ok) {
-          console.log(`Note with id ${noteId} deleted successfully.`);
-          // 在前端更新笔记列表
-          this.loadNotes(true); // 调用 loadNotes 重新加载数据
-        } else if (response.status === 404) {
-          console.error(`Note with id ${noteId} not found.`);
-        } else {
-          console.error('Failed to delete note:', response.status);
-        }
-      } catch (error) {
-        console.error('Error deleting note:', error);
+      if (response.ok) {
+        console.log(`Note with id ${noteId} deleted successfully.`);
+        return true; // 返回成功状态
+      } else if (response.status === 404) {
+        console.error(`Note with id ${noteId} not found.`);
+        return false; // 返回失败状态
+      } else {
+        console.error('Failed to delete note:', response.status);
+        return false; // 返回失败状态
       }
-    },
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      return false; // 发生异常时返回失败状态
+    }
+  },
 
 
   async createNote(data) {

@@ -2,6 +2,7 @@
   <div
     :class="[styles['floating-action'], { [styles['dark-mode']]: isDarkMode }]"
     @click="$emit('fab-click')"
+    data-testid="inbox-fab"
   >
     <span>+</span>
   </div>

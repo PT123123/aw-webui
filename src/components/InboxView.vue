@@ -253,6 +253,8 @@ export default {
           console.log('笔记删除成功');
           // 从本地笔记列表中移除已删除的笔记
           this.notes = this.notes.filter(note => note.id !== noteId);
+          // 考虑到评论可能是笔记的关系，最好也刷新整个笔记列表
+          this.loadNotes(true);
         } else {
           console.warn('笔记删除失败: 未找到该笔记');
         }
