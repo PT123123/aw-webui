@@ -1,0 +1,49 @@
+@import "variables";
+
+/* Tag 样式 */
+.tag-highlight, 
+[data-tag="true"],
+.tiptap-editor [data-tag="true"],
+.tiptap-editor span[data-tag="true"] {
+  color: $primary-accent !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  border-radius: 3px;
+  transition: background-color $transition-speed;
+  padding: 1px 2px;
+  margin: 0 -2px;
+  background-color: transparent;
+
+  /* 鼠标悬停效果 */
+  &:hover {
+    background-color: rgba($primary-accent, 0.2) !important;
+  }
+}
+
+/* 确保tiptap内部标签被正确识别 */
+.tiptap-editor span[style*="color: #bb86fc"] {
+  color: $primary-accent !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+}
+
+/* 标签部分样式 - 只应用于实际标签文本 */
+.tag-part,
+.tag-part-only,
+span.tag-part-only {
+  color: $primary-accent !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  display: inline !important;
+  padding: 0px 1px !important;
+  border-radius: 3px !important;
+  position: relative !important;
+  transition: all $transition-speed ease !important;
+
+  /* 鼠标悬停样式 */
+  &:hover,
+  &.tag-part-only:hover,
+  &.tag-highlight.tag-part-only:hover {
+    background-color: rgba($primary-accent, 0.2) !important;
+  }
+} 

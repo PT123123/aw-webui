@@ -4,7 +4,6 @@
         <div class="modal-content" :class="{ 'dark-mode': isDarkMode }">
             <div class="editor-wrapper" :class="{ 'dark-mode': isDarkMode }">
                 <div class="tiptap-editor" tabindex="0">
-                    <div contenteditable="true"></div>
                  </div>
             </div>
             <div class="modal-actions" :class="{ 'dark-mode': isDarkMode }">
@@ -22,24 +21,101 @@ import StarterKit from '@tiptap/starter-kit'
 
 // 自定义 #tag 高亮扩展 (代码同上)
 import { Mark, mergeAttributes, Extension } from '@tiptap/core'
-import { Plugin } from 'prosemirror-state'
+import { Plugin, TextSelection } from 'prosemirror-state'
 import { Decoration, DecorationSet } from 'prosemirror-view'
 
 const TagMark = Mark.create({
   name: 'tagmark',
   parseHTML() {
-    return [{ tag: 'span[data-tag]' }]
+    return [
+      { tag: 'span[data-tag]' },
+      { tag: 'span.tag-highlight' }
+    ]
   },
   renderHTML({ HTMLAttributes }) {
-    return ['span', { class: 'tag-highlight', 'data-tag': 'true' }, 0]
+    return ['span', { 
+      class: 'tag-highlight', 
+      'data-tag': 'true',
+      style: 'color: #bb86fc; font-weight: bold;'
+    }, 0]
   },
   addInputRules() {
+    // 更严格的标签检测规则，确保准确匹配
     return [
       {
-        find: /#([^\s#]+)/g,
+        find: /(^|\s)(#[\w\u4e00-\u9fa5]+)(?=\s|$)/g,  // 严格匹配，要求标签后为空格或行尾
         handler: ({ state, range, match }) => {
-          const { tr } = state
-          tr.addMark(range.from + match.index, range.from + match.index + match[0].length, this.type.create())
+          console.log('[tag] 输入规则触发，原始匹配:', match, '范围:', range);
+          
+          // 检查是否处于输入法状态，如果是则跳过处理
+          if (window.isComposing) {
+            console.log('[tag] 输入法输入中，暂不处理标签');
+            return null;
+          }
+          
+          try {
+            // 获取当前文档和事务
+            const { tr } = state;
+            const currentDoc = state.doc;
+            
+            // 解析匹配结果
+            const prefix = match[1]; // 前缀（空格或行首）
+            const tagWithHash = match[2]; // 完整标签（带#）
+            console.log('[tag] 识别到的标签:', tagWithHash);
+            
+            // 检查当前整个文本内容
+            console.log('[tag] 当前文档完整文本:', currentDoc.textContent);
+            
+            // 验证标签有效性
+            if (tagWithHash.length <= 1) {
+              console.log('[tag] 标签过短，跳过处理');
+              return null;
+            }
+            
+            // 计算标签在文档中的位置 - 这个位置是包含#号的
+            const startPosInDoc = range.from + prefix.length;
+            const endPosInDoc = startPosInDoc + tagWithHash.length;
+            
+            // 记录位置和文本内容，用于调试
+            console.log('[tag] 计算出的标记范围:', startPosInDoc, endPosInDoc);
+            const textInRange = currentDoc.textBetween(startPosInDoc, endPosInDoc);
+            console.log('[tag] 文档中对应的文本:', textInRange);
+            
+            // 验证文本匹配
+            if (textInRange !== tagWithHash) {
+              console.log('[tag] 错误：计算范围内的文本与匹配到的标签不符，放弃处理');
+              return null;
+            }
+            
+            // 检查是否已有标记
+            let hasExistingMark = false;
+            state.doc.nodesBetween(startPosInDoc, endPosInDoc, (node, pos) => {
+              if (node.marks.find(mark => mark.type.name === 'tagmark')) {
+                hasExistingMark = true;
+                return false; // 停止遍历
+              }
+              return true;
+            });
+            
+            if (hasExistingMark) {
+              console.log('[tag] 此范围已有标记，跳过处理');
+              return null;
+            }
+            
+            // 记录当前选择状态
+            const { selection } = state;
+            
+            // 添加标记
+            console.log('[tag] 添加标记，范围:', startPosInDoc, '-', endPosInDoc);
+            tr.addMark(startPosInDoc, endPosInDoc, this.type.create());
+            
+            // 保持原有选择位置，不修改选择状态
+            console.log('[tag] 保持原有选择位置');
+            return tr;
+          } catch (e) {
+            console.error('[tag] 处理标签出错:', e);
+            return null;
+          }
         }
       }
     ]
@@ -85,6 +161,12 @@ export default {
   // components: { EditorContent }, // 已移除
   created() {
     console.log('NoteEditor组件 created');
+    // 初始化全局输入法状态
+    window.isComposing = false;
+    this._lastProcessedHTML = null; // Initialize to null or a unique string
+    this._processingTag = false;
+    this._editorViewMounted = false;
+    this._skipNextTagProcessing = false; // 新增变量，用于控制是否跳过下一次标签处理
   },
   props: {
     showInput: Boolean,
@@ -112,6 +194,7 @@ export default {
       _portalSubmitHandler: null,
       _portalEditorClickHandler: null,
       _portalContentClickHandler: null,
+      _setupTagsTimeout: null,
     }
   },
   mounted() {
@@ -127,6 +210,11 @@ export default {
   },
   beforeDestroy() {
     console.log('NoteEditor组件 beforeDestroy: 组件即将销毁');
+    // 清理定时器
+    if (this._setupTagsTimeout) {
+      clearTimeout(this._setupTagsTimeout);
+      this._setupTagsTimeout = null;
+    }
     // 确保在组件销毁前销毁 Editor 实例并移除 Portal
     this.destroyEditorAndRemovePortal();
   },
@@ -153,7 +241,7 @@ export default {
         this.editor.commands.setContent(newVal || '', false);
         // 只在初始化空编辑器内容时聚焦，避免在用户编辑过程中重新聚焦导致光标位置丢失
         if (!newVal || newVal === '') {
-          setTimeout(() => this.editor.commands.focus('end'), 50);
+         setTimeout(() => this.editor.commands.focus('end'), 50);
         }
       } else if (this.editor) {
          console.log('watch: value changed, but editor content is already the same or newVal is empty.');
@@ -175,11 +263,29 @@ export default {
       }
     },
     handleTagClick(e) {
-       console.log('handleTagClick: Tag clicked');
-      if (e.target.classList.contains('tag-highlight')) {
-        const tag = e.target.textContent;
-         console.log('handleTagClick: Tag textContent:', tag);
-        this.$emit('filter-by-tag', tag);
+      console.log('[tag] handleTagClick: 标签被点击');
+      
+      // 确定点击的元素是标签元素
+      const target = e.target.closest('[data-tag="true"]') || e.target;
+      
+      if (target && target.hasAttribute('data-tag')) {
+        const tagText = target.textContent || '';
+        
+        // 确保文本内容是一个有效的标签，必须以#开头
+        if (tagText.startsWith('#')) {
+          const tagMatch = tagText.match(/^(#[\w\u4e00-\u9fa5!@#$%^&*()_\-+=[\]{}|\\:;<>,.?/]+)/);
+          if (tagMatch && tagMatch[1]) {
+            const validTag = tagMatch[1];
+            console.log('[tag] handleTagClick: 点击标签:', validTag);
+            this.$emit('filter-by-tag', validTag);
+          } else {
+            console.log('[tag] handleTagClick: 标签内容不匹配标准格式:', tagText);
+          }
+        } else {
+          console.log('[tag] handleTagClick: 标签内容不以#开头:', tagText);
+        }
+      } else {
+        console.log('[tag] handleTagClick: 未找到标签元素');
       }
     },
     handleCancel(e) {
@@ -198,44 +304,30 @@ export default {
 
       console.log('handleSubmit: 尝试提交...');
 
-      // 现在 this.editor 应该指向 Portal 中创建的实例
+      // 确保编辑器实例存在
       if (!this.editor) {
         console.log('handleSubmit: Editor实例不存在，无法提交。');
         return;
       }
 
-      // --- 检查 Tiptap Editor 实例当前关联的 DOM 元素 ---
-      // 现在这个 Log 应该指向 Portal 中可见的 DOM 元素了
-      if (this.editor.view && this.editor.view.dom) {
-          console.log('handleSubmit: Editor实例当前关联的 DOM 元素是:', this.editor.view.dom);
-      } else {
-          console.log('handleSubmit: Editor实例存在，但无法访问 view.dom (可能尚未完全初始化或已损坏)。');
-      }
-      // -----------------------------------------
+      // 获取纯文本内容
+      const rawText = this.editor.getText();
+      console.log('handleSubmit: 获取到纯文本:', rawText);
 
-
-      // --- 获取并 Log HTML 和 Text ---
-      let html = this.editor.getHTML();
-      const text = this.editor.getText();
-      console.log('handleSubmit: 获取到 HTML:', html); // 现在应该有内容了
-      console.log('handleSubmit: 获取到 Text:', text);   // 现在应该有内容了
-      console.log('handleSubmit: Trimmed Text 是否为空:', !text.trim());
-
-      if (!text.trim() || this.isSubmitting) {
-        console.log('handleSubmit: Text 为空或正在提交中，阻止提交。');
+      // 检查内容是否为空或正在提交
+      if (!rawText.trim() || this.isSubmitting) {
+        console.log('handleSubmit: 文本为空或正在提交中，阻止提交。');
         return;
       }
-
-      // 清理HTML (如果需要)
-       console.log('handleSubmit: 清理前 HTML:', html);
-      html = html.replace(/<span style="color: #bb86fc; font-weight: bold;" data-tag="true">(.*?)<\/span>/g,
-                          '<span class="tag-highlight" data-tag="true">$1</span>');
-       console.log('handleSubmit: 清理后 HTML:', html);
-
+      
+      // 使用更安全的方式构建内容 - 不使用HTML，只用纯文本
+      let finalText = rawText.trim();
+      console.log('handleSubmit: 准备提交纯文本:', finalText);
+      
       // 延迟触发提交事件
       this.$nextTick(() => {
-        console.log('handleSubmit: $nextTick 中，即将发出 submit-note 事件，携带 HTML:', html);
-        this.$emit('submit-note', html);
+        console.log('handleSubmit: $nextTick 中，即将发出 submit-note 事件，携带纯文本:', finalText);
+        this.$emit('submit-note', finalText);
       });
     },
     
@@ -443,17 +535,133 @@ export default {
           // *** 将新的 Editor 实例绑定到 Portal 中创建的 DOM 元素 ***
           element: this.portalEditorElement,
           extensions: [
-            StarterKit,
+            // 自定义配置StarterKit，禁用部分Markdown格式，保留列表和加粗
+            StarterKit.configure({
+              heading: false,        // 禁用标题
+              italic: false,         // 禁用斜体
+              blockquote: false,     // 禁用引用块
+              code: false,           // 禁用代码
+              codeBlock: false,      // 禁用代码块
+              horizontalRule: false, // 禁用水平线
+              strike: false,         // 禁用删除线
+              hardBreak: true,       // 保留硬换行
+              // 保留以下功能
+              paragraph: true,
+              text: true,
+              bold: true,            // 启用加粗
+              bulletList: true,      // 启用无序列表
+              orderedList: true,     // 启用有序列表
+            }),
             TagMark,
             CursorHighlight
           ],
           // 使用传入的 value 或默认值作为初始内容
           content: this.value || '',
           onUpdate: ({ editor }) => {
-            // --- LOG 1: 在 Portal Editor 内容更新时获取 HTML 并 Log ---
-            const currentHTML = editor.getHTML();
-            console.log('Portal Editor onUpdate: Content updated. Current HTML:', currentHTML);
-            this.$emit('input', currentHTML);
+            if (!this._editorViewMounted) return;
+
+            const currentHTMLSnapshot = editor.getHTML(); // Snapshot at the very start of onUpdate
+            console.log(`[tag] onUpdate: Fired. HTML Snapshot Length: ${currentHTMLSnapshot.length}`);
+
+            // 如果正在处理中，跳过这次触发
+            if (this._processingTag) {
+              console.log("[tag] onUpdate: Already processing (_processingTag=true), skipping this update trigger.");
+              return;
+            }
+
+            // 如果内容没变，跳过处理
+            if (this._lastProcessedHTML === currentHTMLSnapshot) {
+              console.log("[tag] onUpdate: HTML content identical to _lastProcessedHTML, skipping.");
+              return;
+            }
+            
+            console.log(`[tag] onUpdate: HTML changed or first run. LastProcessedHTML Length: ${this._lastProcessedHTML ? this._lastProcessedHTML.length : 'null'}, CurrentSnapshot Length: ${currentHTMLSnapshot.length}`);
+
+            if (this._setupTagsTimeout) {
+              clearTimeout(this._setupTagsTimeout);
+              this._setupTagsTimeout = null;
+              console.log("[tag] onUpdate: Cleared previous _setupTagsTimeout");
+            }
+
+            // 检查是否可能包含标签
+            const hasPotentialTag = currentHTMLSnapshot.includes('#') || 
+                                    currentHTMLSnapshot.includes('data-tag="true"') || 
+                                    currentHTMLSnapshot.includes('class="tag-highlight"') ||
+                                    currentHTMLSnapshot.includes('<strong');
+
+            // 如果正在输入法输入中或需要跳过处理，记录但不处理
+            if (window.isComposing || this._skipNextTagProcessing) {
+              console.log(`[tag] onUpdate: 跳过处理 (输入法=${window.isComposing}, 跳过标记=${this._skipNextTagProcessing})`);
+              
+              // 即使跳过，仍更新_lastProcessedHTML以避免重复处理相同内容
+              this._lastProcessedHTML = currentHTMLSnapshot;
+              
+              // 仍然触发input事件以更新外部绑定值
+              if (this.value !== currentHTMLSnapshot) {
+                this.$emit('input', currentHTMLSnapshot || '');
+              }
+              return;
+            }
+
+            if (hasPotentialTag) {
+              console.log("[tag] onUpdate: Potential tag/strong found. Scheduling processing for HTML snapshot.");
+              
+              // 使用较长的延迟，确保中文输入完成，特别是在中文输入法和Tiptap交互时
+              this._setupTagsTimeout = setTimeout(() => {
+                if (!this.editor || this._isDestroyed) {
+                  if (this._processingTag) {
+                    this._processingTag = false; // 确保销毁时释放锁
+                    console.warn("[tag] onUpdate (in timeout): Editor destroyed, LOCK RELEASED.");
+                  }
+                  return;
+                }
+
+                if (this._processingTag) {
+                  console.log("[tag] onUpdate (in timeout): Still processing (_processingTag=true before acquiring), aborting this scheduled run.");
+                  return;
+                }
+                
+                // 获取锁
+                this._processingTag = true;
+                console.log("[tag] onUpdate (in timeout): LOCK ACQUIRED.");
+
+                // 获取当前最新HTML
+                const htmlAtProcessingStart = editor.getHTML();
+                if (htmlAtProcessingStart !== currentHTMLSnapshot) {
+                  console.warn(`[tag] onUpdate (in timeout): HTML changed between onUpdate fire and processing timeout!
+                    Snapshot length: ${currentHTMLSnapshot.length}
+                    ProcessingStart length: ${htmlAtProcessingStart.length}`);
+                }
+
+                // 只有在当前不是输入法输入状态时才处理标签
+                if (!window.isComposing && !this._skipNextTagProcessing) {
+                  console.log(`[tag] onUpdate (in timeout): Passing HTML to setupTagClickHandlers (length: ${htmlAtProcessingStart.length})`);
+                  this.setupTagClickHandlers(htmlAtProcessingStart);
+                } else {
+                  console.log(`[tag] onUpdate (in timeout): Skipping setupTagClickHandlers due to input method state`);
+                }
+                
+                // 处理完成后释放锁
+                setTimeout(() => {
+                  if (this.editor && !this._isDestroyed) {
+                    const finalHTML = editor.getHTML();
+                    this._lastProcessedHTML = finalHTML; 
+                    console.log(`[tag] onUpdate (final quiet period timeout): _lastProcessedHTML updated. Length: ${finalHTML.length}`);
+                  }
+                  this._processingTag = false;
+                  console.log("[tag] onUpdate (final quiet period timeout): LOCK RELEASED.");
+                }, 300);
+              }, 300); // 延长延迟时间，给中文输入更多时间完成
+            } else {
+              // 没有标签相关内容，直接更新
+              this._lastProcessedHTML = currentHTMLSnapshot;
+              console.log(`[tag] onUpdate: No potential tags/strong. _lastProcessedHTML updated to current clean state. Length: ${currentHTMLSnapshot.length}`);
+            }
+
+            // 触发input事件以更新外部绑定值
+            if (this.value !== currentHTMLSnapshot) {
+              this.$emit('input', currentHTMLSnapshot || '');
+            }
           },
           autofocus: 'end', // 自动聚焦到末尾
           editorProps: {
@@ -461,6 +669,15 @@ export default {
               class: 'focus-visible',
               autocomplete: 'off', autocorrect: 'off', autocapitalize: 'off', spellcheck: 'false'
             },
+            // 添加对输入处理的控制，避免特殊字符被解析为格式标记
+            handleKeyDown: (view, event) => {
+              // 让所有特殊字符如#、*等都直接显示为文本
+              return false; // 返回false允许默认处理继续
+            },
+            // 防止粘贴时的格式化
+            transformPastedText: (text) => {
+              return text; // 直接返回原始文本，不做格式处理
+            }
           },
           onFocus: () => {
             console.log('Portal Editor onFocus: 编辑器已获得焦点');
@@ -468,8 +685,28 @@ export default {
           onCreate: ({ editor }) => {
             // --- LOG 2: Portal Editor 创建成功时 Log ---
             console.log('Portal Editor onCreate: 编辑器实例已创建并绑定到 Portal DOM.', this.editor);
-            // 创建完成后，设置 Portal 中的事件监听
-            this.setupPortalEvents();
+            
+            // 设置输入法事件监听
+            if (this.portalEditorElement) {
+              // 注册输入法事件
+              this.portalEditorElement.addEventListener('compositionstart', this.handleCompositionStart);
+              this.portalEditorElement.addEventListener('compositionupdate', this.handleCompositionUpdate);
+              this.portalEditorElement.addEventListener('compositionend', this.handleCompositionEnd);
+              console.log('[tag] 添加了输入法事件监听');
+            }
+            
+            // 创建后设置标签点击处理
+            // this.setupTagClickHandlers(); // Initial call removed, onUpdate will handle it
+            this._editorViewMounted = true; // Editor view is now mounted and ready
+            console.log('[tag] Portal Editor onCreate: _editorViewMounted = true');
+             // Manually trigger an update to process initial content if any
+            this.$nextTick(() => {
+              if (this.editor && !this._isDestroyed) {
+                console.log('[tag] Portal Editor onCreate: Forcing initial onUpdate via no-op transaction.');
+                const { tr } = this.editor.state;
+                this.editor.view.dispatch(tr);
+              }
+            });
           }
         });
 
@@ -478,9 +715,243 @@ export default {
         // 不再重复调用，因为setupPortalEvents中已经调用了activateEditor
     },
 
+    // setupTagClickHandlers不再直接依赖this.editor.getHTML()，而是接收HTML作为参数
+    setupTagClickHandlers(htmlFromOnUpdate) {
+      if (!this.editor || !this.editor.view || !this.editor.view.dom) {
+        console.warn('[tag] setupTagClickHandlers: Editor or view not available, exiting.');
+        return false; // DOM not modified
+      }
+      
+      // 如果当前正在进行输入法输入或者标记为跳过，则不处理
+      if (window.isComposing || this._skipNextTagProcessing) {
+        console.log(`[tag] setupTagClickHandlers: 跳过处理 (输入法=${window.isComposing}, 跳过标记=${this._skipNextTagProcessing})`);
+        return false;
+      }
+      
+      console.log(`[tag] setupTagClickHandlers: START. Passed HTML length: ${htmlFromOnUpdate.length}`);
+      const initialDomSnapshot = this.editor.view.dom.innerHTML;
+      
+      let selectionAnchor = null;
+      let selectionHead = null;
+      let currentDocSize = 0;
+      if (this.editor.state && this.editor.state.selection) {
+        selectionAnchor = this.editor.state.selection.anchor;
+        selectionHead = this.editor.state.selection.head;
+        currentDocSize = this.editor.state.doc.content.size;
+        console.log(`[tag] setupTagClickHandlers: Saved光标 anchor: ${selectionAnchor}, head: ${selectionHead}, Doc size: ${currentDocSize}`);
+      }
+      
+      const tagSpans = this.editor.view.dom.querySelectorAll('span[data-tag="true"], .tag-highlight');
+      const strongElements = this.editor.view.dom.querySelectorAll('strong');
+      console.log(`[tag] setupTagClickHandlers: Found ${tagSpans.length} tag spans, ${strongElements.length} strong elements.`);
+      
+      let didModifyDOM = false;
+      const domChanges = [];
+
+      // 1. 处理 strong 元素，检查是否有包裹 tag 的 strong 元素
+      strongElements.forEach(strong => {
+        const strongOuterHTML = strong.outerHTML.substring(0, 100); // 只记录前100个字符以避免日志过长
+        const parentNode = strong.parentNode;
+        const parentOuterHTML = parentNode ? parentNode.outerHTML.substring(0, 100) : 'N/A (no parent)';
+        
+        console.log(`[tag] Analyzing <strong>: ${strongOuterHTML}, Parent HTML (approx): ${parentOuterHTML}`);
+        
+        // 检查strong是否直接包裹了一个tag span
+        if (strong.childNodes.length === 1) {
+          const childNode = strong.childNodes[0];
+          if (childNode.nodeType === Node.ELEMENT_NODE && 
+              (childNode.hasAttribute('data-tag') || childNode.classList.contains('tag-highlight'))) {
+            console.log(`[tag] Strong unwrap candidate (direct wrap): ${strongOuterHTML}`);
+            
+            // 获取父元素，以便能插入到正确的位置
+            if (parentNode) {
+              domChanges.push({ 
+                type: 'unwrapStrong', 
+                strong: strong, 
+                tagSpan: childNode, 
+                parent: parentNode,
+                originalHTML: strongOuterHTML 
+              });
+            }
+          }
+        }
+      });
+
+      // 2. 处理 tag span 元素
+      tagSpans.forEach(span => {
+        // 添加点击处理器
+        if (!span.hasAttribute('data-click-handler')) {
+          span.addEventListener('click', this.handleTagClick);
+          span.setAttribute('data-click-handler', 'true');
+        }
+        
+        const spanOuterHTML = span.outerHTML;
+        const spanTextContent = span.textContent || '';
+        console.log(`[tag] Analyzing tag span: textContent='${spanTextContent}', HTML=${spanOuterHTML}`);
+        
+        // 检查标签内容是否正确格式（以#开头）
+        if (!spanTextContent.startsWith('#')) {
+          // 如果不是以#开头，尝试从前一个节点中获取#
+          const prevNode = span.previousSibling;
+          if (prevNode && prevNode.nodeType === Node.TEXT_NODE && prevNode.textContent.endsWith('#')) {
+            const prevText = prevNode.textContent;
+            console.log(`[tag] Found # in previous text node: '${prevText}'. Will prepend #.`);
+            domChanges.push({
+              type: 'prependHashToSpan',
+              span: span,
+              prevNode: prevNode,
+              originalSpanText: spanTextContent,
+              originalPrevText: prevText
+            });
+          } else {
+            console.warn(`[tag] Tag span lacks # and no adjacent # found: '${spanTextContent}'`);
+          }
+        } else {
+          // 如果是以#开头，检查内容是否需要分割（如果包含了不属于标签的内容）
+          const tagPattern = /^(#[\w\u4e00-\u9fa5]+)(.*)/;
+          const match = spanTextContent.match(tagPattern);
+          
+          if (match) {
+            const tagPart = match[1]; // #加标签名
+            const restPart = match[2]; // 剩余内容
+            
+            // 如果有剩余内容并且以空格开头，需要分割
+            if (restPart && restPart.length > 0 && (restPart.startsWith(' ') || restPart.startsWith('\n'))) {
+              console.log(`[tag] Splitting tag: '${spanTextContent}' into tag='${tagPart}' and rest='${restPart}'`);
+              domChanges.push({
+                type: 'splitTagContent',
+                span: span,
+                tagPart: tagPart,
+                restPart: restPart,
+                originalHTML: spanOuterHTML
+              });
+            }
+          }
+        }
+      });
+
+      // 3. 应用所有DOM变更
+      if (domChanges.length > 0) {
+        console.log(`[tag] Applying ${domChanges.length} DOM changes...`);
+        didModifyDOM = true;
+        
+        // 保存当前选择范围
+        const selection = window.getSelection();
+        const savedRange = selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
+        
+        if (savedRange) {
+          console.log(`[tag] Saved selection range: startOffset=${savedRange.startOffset}, endOffset=${savedRange.endOffset}`);
+        }
+        
+        // 执行所有DOM变更
+        domChanges.forEach((change, index) => {
+          console.log(`[tag] Applying change #${index+1}: ${change.type}`);
+          
+          try {
+            switch (change.type) {
+              case 'unwrapStrong':
+                const parent = change.parent;
+                const tagSpan = change.tagSpan;
+                const strong = change.strong;
+                
+                // 克隆标签节点，然后在strong前插入，然后移除strong
+                const clonedTagSpan = tagSpan.cloneNode(true);
+                parent.insertBefore(clonedTagSpan, strong);
+                parent.removeChild(strong);
+                
+                console.log(`[tag] Unwrapped strong element, moved tag span outside`);
+                break;
+                
+              case 'prependHashToSpan':
+                // 将#从前一个文本节点移到span内容前
+                change.span.textContent = '#' + change.originalSpanText;
+                if (change.prevNode.textContent.endsWith('#')) {
+                  change.prevNode.textContent = change.originalPrevText.slice(0, -1);
+                }
+                console.log(`[tag] Prepended # to span, now: '${change.span.textContent}'`);
+                break;
+                
+              case 'splitTagContent':
+                // 将span内容限制为只包含标签部分，剩余内容作为文本节点
+                change.span.textContent = change.tagPart;
+                
+                // 创建新文本节点包含剩余内容
+                const textNode = document.createTextNode(change.restPart);
+                
+                // 插入到span后面
+                if (change.span.nextSibling) {
+                  change.span.parentNode.insertBefore(textNode, change.span.nextSibling);
+                } else {
+                  change.span.parentNode.appendChild(textNode);
+                }
+                
+                console.log(`[tag] Split tag content: span now='${change.span.textContent}', added text node='${change.restPart}'`);
+                break;
+            }
+          } catch (error) {
+            console.error(`[tag] Error applying change #${index+1}:`, error);
+          }
+        });
+        
+        // 恢复选择范围
+        if (savedRange) {
+          try {
+            selection.removeAllRanges();
+            selection.addRange(savedRange);
+            console.log('[tag] Restored native selection range');
+          } catch (e) {
+            console.error('[tag] Failed to restore selection:', e);
+          }
+        }
+        
+        // 记录DOM变更后的状态
+        const finalDomSnapshot = this.editor.view.dom.innerHTML;
+        console.log(`[tag] DOM after changes (preview): ${finalDomSnapshot.substring(0, 200)}...`);
+        
+        // 使用setTimeout确保DOM变更已完全应用
+        setTimeout(() => {
+          if (!this.editor || this._isDestroyed) return;
+          
+          try {
+            // 恢复Tiptap选择状态
+            if (selectionAnchor !== null && selectionHead !== null) {
+              const { state, view } = this.editor;
+              const newDocSize = state.doc.content.size;
+              
+              console.log(`[tag] Restoring cursor: anchor=${selectionAnchor}, head=${selectionHead}, newDocSize=${newDocSize}`);
+              
+              if (selectionAnchor <= newDocSize && selectionHead <= newDocSize) {
+                view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, selectionAnchor, selectionHead)));
+                console.log('[tag] Cursor restored successfully');
+              } else {
+                console.warn(`[tag] Cursor position out of bounds, using document end instead`);
+                view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, newDocSize, newDocSize)));
+              }
+            }
+          } catch (e) {
+            console.error('[tag] Failed to restore Tiptap cursor:', e);
+          }
+        }, 50);
+      } else {
+        console.log('[tag] No DOM changes were queued.');
+      }
+      
+      console.log(`[tag] setupTagClickHandlers: END. DOM modified: ${didModifyDOM}`);
+      return didModifyDOM;
+    },
+
     // 销毁 Editor 实例并移除 Portal DOM
     destroyEditorAndRemovePortal() {
         console.log('destroyEditorAndRemovePortal: 开始销毁 Editor 并移除 Portal...');
+        
+        // 清除输入法事件监听
+        if (this.portalEditorElement) {
+          this.portalEditorElement.removeEventListener('compositionstart', this.handleCompositionStart);
+          this.portalEditorElement.removeEventListener('compositionupdate', this.handleCompositionUpdate);
+          this.portalEditorElement.removeEventListener('compositionend', this.handleCompositionEnd);
+          console.log('[tag] 移除了输入法事件监听');
+        }
+        
         // 1. 销毁 Editor 实例
         if (this.editor) {
             console.log('destroyEditorAndRemovePortal: 销毁 Editor 实例.');
@@ -588,72 +1059,61 @@ export default {
       }
       
       // 简化编辑器点击逻辑，只保留一个事件处理
-      if (editorContent) {
-        this._portalEditorClickHandler = (e) => {
-          e.stopPropagation();
-          console.log('Portal编辑器内容区域点击...');
-          if (this.editor && this.editor.commands) {
-            this.editor.commands.focus();
-            console.log('Portal编辑器点击: Tiptap focus command called.');
-          }
-        };
-        editorContent.addEventListener('click', this._portalEditorClickHandler);
-        console.log('setupPortalEvents: 添加 Portal 编辑器区域点击 监听');
-      }
-      
+       if (editorContent) {
+           this._portalEditorClickHandler = (e) => {
+               e.stopPropagation();
+               console.log('Portal编辑器内容区域点击...');
+               if (this.editor && this.editor.commands) {
+                   this.editor.commands.focus();
+                    console.log('Portal编辑器点击: Tiptap focus command called.');
+               }
+           };
+          editorContent.addEventListener('click', this._portalEditorClickHandler);
+           console.log('setupPortalEvents: 添加 Portal 编辑器区域点击 监听');
+       }
+
       // 简化模态框点击逻辑，减少重复聚焦
-      if (this.portalContent) {
-        this._portalContentClickHandler = (e) => {
-          e.stopPropagation();
+       if (this.portalContent) {
+            this._portalContentClickHandler = (e) => {
+              e.stopPropagation();
           console.log('Portal模态框内容区点击');
-          if (this.editor && this.editor.commands) {
+               if (this.editor && this.editor.commands) {
             this.editor.commands.focus('end');
-            console.log('Portal模态框点击: Tiptap focus end command called.');
-          }
-        };
-        this.portalContent.addEventListener('click', this._portalContentClickHandler);
-        console.log('setupPortalEvents: 添加 Portal 模态框内容点击 监听');
-      }
+                  console.log('Portal模态框点击: Tiptap focus end command called.');
+               }
+           };
+           this.portalContent.addEventListener('click', this._portalContentClickHandler);
+            console.log('setupPortalEvents: 添加 Portal 模态框内容点击 监听');
+       }
 
       console.log('setupPortalEvents: Portal 事件监听设置完成.');
 
       // 调用一次聚焦尝试，通过activateEditor处理
-      this.activateEditor();
+       this.activateEditor();
     },
 
     // 多次尝试聚焦编辑器，现在作用于绑定到 Portal DOM 的实例
     activateEditor() {
-      console.log('activateEditor: 开始激活编辑器 (减少聚焦次数)...');
-      // 减少聚焦次数，从[50, 150, 300, 600, 1000]改为只有[50, 300]
-      const focusTimes = [50, 300]; 
-      
-      // 添加聚焦成功标志
-      let focusSucceeded = false;
+      console.log('activateEditor: 开始激活编辑器 (精简聚焦过程)...');
+      // 减少聚焦次数，只尝试一次，避免多次聚焦导致光标跳动
+      const focusTime = 150; 
 
-      focusTimes.forEach(time => {
         setTimeout(() => {
-          // 如果已经成功聚焦，则不再尝试
-          if (focusSucceeded) {
-            console.log(`activateEditor: ${time}ms 后跳过聚焦，因为已经成功聚焦`);
-            return;
-          }
-          
-          console.log(`activateEditor: ${time}ms 后尝试聚焦... editor exists:`, !!this.editor);
+        console.log(`activateEditor: ${focusTime}ms 后尝试聚焦... editor exists:`, !!this.editor);
           if (this.editor && this.editor.commands) {
             // 调用 Tiptap focus command
-            const focusResult = this.editor.commands.focus('end');
-            focusSucceeded = focusResult; // 记录聚焦结果
-            console.log(`activateEditor: ${time}ms 后 Tiptap focus command called. 结果:`, focusResult);
-          } else {
-            console.log(`activateEditor: ${time}ms 后 Editor实例未准备好，无法 Tiptap 聚焦`);
-          }
+          const focusResult = this.editor.commands.focus('end');
+          console.log(`activateEditor: Tiptap focus command called. 结果:`, focusResult);
           
           // 如果 Tiptap 聚焦失败，才尝试 DOM API 聚焦作为后备
-          if (!focusSucceeded) {
+          if (!focusResult) {
             this.focusEditorDOM();
           }
-        }, time);
-      });
+        } else {
+          console.log(`activateEditor: Editor实例未准备好，尝试DOM API聚焦`);
+          this.focusEditorDOM();
+        }
+      }, focusTime);
     },
 
     // 使用 DOM API 直接聚焦到 Portal 中的编辑器内容
@@ -712,6 +1172,38 @@ export default {
          console.error('focusEditorDOM: DOM聚焦失败:', e);
        }
     },
+
+    handleCompositionStart(e) {
+      console.log('[tag] 输入法开始输入');
+      window.isComposing = true;
+      this._skipNextTagProcessing = true; // 输入法开始时，跳过下一次标签处理
+    },
+    
+    handleCompositionUpdate(e) {
+      // 输入法更新（持续输入中）
+      // console.log('[tag] 输入法更新中...'); // Can be too noisy
+      window.isComposing = true;
+    },
+    
+    handleCompositionEnd(e) {
+      console.log('[tag] handleCompositionEnd: 输入法结束输入. Event target value:', e.target.value);
+      window.isComposing = false;
+      
+      // Invalidate _lastProcessedHTML to ensure onUpdate re-evaluates the content
+      const uniqueInvalidationString = `composition_ended_${Date.now()}`;
+      console.log('[tag] handleCompositionEnd: Invalidating _lastProcessedHTML with:', uniqueInvalidationString);
+      this._lastProcessedHTML = uniqueInvalidationString;
+      
+      // 设置延迟，使得输入法结束后完整文本已经插入DOM
+      setTimeout(() => {
+        this._skipNextTagProcessing = false; // 延迟一定时间后，允许标签处理
+        // 触发一个空事务，确保onUpdate被调用以处理标签
+        if (this.editor && !this._isDestroyed) {
+          const { tr } = this.editor.state;
+          this.editor.view.dispatch(tr);
+        }
+      }, 200);
+    },
   }
 }
 </script>
@@ -750,7 +1242,7 @@ export default {
    padding: 20px;
    display: flex;
    flex-direction: column;
-   border: 3px solid white; /* 边框 */
+   border: 3px solid white;
    box-sizing: border-box; /* 确保 padding 和 border 不增加总尺寸 */
 }
 
@@ -906,8 +1398,51 @@ export default {
 }
 
 /* Tag 样式 */
-.tag-highlight {
+.tag-highlight, 
+[data-tag="true"],
+.tiptap-editor [data-tag="true"],
+.tiptap-editor span[data-tag="true"] {
   color: #bb86fc !important;
   font-weight: bold !important;
+  cursor: pointer !important;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+  padding: 1px 2px;
+  margin: 0 -2px;
+  background-color: transparent;
+}
+
+/* 鼠标悬停效果 */
+.tag-highlight:hover, 
+[data-tag="true"]:hover {
+  background-color: rgba(187, 134, 252, 0.2) !important;
+}
+
+/* 确保tiptap内部标签被正确识别 */
+.tiptap-editor span[style*="color: #bb86fc"] {
+  color: #bb86fc !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+}
+
+/* 标签部分样式 - 只应用于实际标签文本 */
+.tag-part,
+.tag-part-only,
+span.tag-part-only {
+  color: #bb86fc !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  display: inline !important;
+  padding: 0px 1px !important;
+  border-radius: 3px !important;
+  position: relative !important;
+  transition: all 0.2s ease !important;
+}
+
+/* 鼠标悬停样式 */
+.tag-part:hover,
+.tag-part-only:hover,
+span.tag-highlight.tag-part-only:hover {
+  background-color: rgba(187, 134, 252, 0.2) !important;
 }
 </style>

@@ -29,37 +29,37 @@
               <button
                 class="dropdown-toggle"
                 @click.stop="toggleMenu(note.id)"
+                :class="{ 'dark-mode': isDarkMode }"
+                style="--after-display: none !important;"
               >
-                <span
-                  style="font-size: 1.2em; cursor: pointer;"
-                  :class="{ 'dark-mode': isDarkMode }"
-                >⋮</span>
+                <div class="menu-dots-container">
+                  <div class="menu-dots"></div>
+                </div>
               </button>
               <ul
                 v-if="openMenuId === note.id"
                 class="dropdown-menu memos-dropdown-menu"
                 :class="{ 'dark-mode': isDarkMode }"
               >
-                <li @click.stop="handleDelete(note.id)">
-                  删除
+                <li @click.stop="handleComment(note)" class="menu-item">
+                  <span class="menu-icon">💬</span>
+                  <span class="menu-text">评论</span>
+                </li>
+                <li class="menu-divider"></li>
+                <li @click.stop="handleDelete(note.id)" class="menu-item delete-item">
+                  <span class="menu-icon">🗑️</span>
+                  <span class="menu-text">删除</span>
                 </li>
               </ul>
             </div>
-            <button
-              class="comment-btn"
-              @click.stop="handleComment(note)"
-              data-testid="comment-button"
-            >
-              Comment
-            </button>
           </div>
         </div>
         <div
           class="note-meta"
           :class="{ 'dark-mode': isDarkMode }"
         >
-          <span>创建: {{ note.created_at | formatDate }}</span>
-          <span v-if="note.updated_at">修改: {{ note.updated_at | formatDate }}</span>
+          <span class="date-info">创建: {{ note.created_at | formatDate }}</span>
+          <span v-if="note.updated_at" class="date-info">修改: {{ note.updated_at | formatDate }}</span>
           <div
             v-if="note.tags && note.tags.length > 0"
             class="note-tags"
@@ -91,7 +91,16 @@ export default {
       if (!dateStr) return '';
       try {
         const date = new Date(dateStr);
-        return isNaN(date.getTime()) ? '无效日期' : date.toLocaleString();
+        if (isNaN(date.getTime())) return '无效日期';
+        
+        // 使用更简洁的日期格式：YYYY/MM/DD HH:MM
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        
+        return `${year}/${month}/${day} ${hours}:${minutes}`;
       } catch (e) {
         console.error('[NoteList] 日期格式错误:', dateStr, e);
         return '无效日期';
@@ -141,22 +150,85 @@ export default {
     highlightTagsInContent(content) {
       if (!content) return '';
       try {
-        const tagRegex = /(#)([^\s#]+)/g;
-        return content.replace(tagRegex, (match, p1, p2) => {
-          return `<span class="content-tag" data-tag="${p2}">${p1}${p2}</span>`;
-        });
+        // 1. 首先处理纯文本格式：将纯文本转换为HTML结构
+        let htmlContent = content;
+        
+        // 检查内容是否已经是HTML格式（是否已包含<p>标签）
+        if (!content.startsWith('<p>')) {
+          // 将纯文本转换为HTML段落
+          htmlContent = content
+            .split('\n\n')
+            .map(p => p.trim())
+            .filter(p => p.length > 0)
+            .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+            .join('');
+          
+          // 如果没有成功分段，就包装整个内容
+          if (!htmlContent) {
+            htmlContent = `<p>${content}</p>`;
+          }
+        }
+        
+        // 2. 防止HTML注入，对内容进行HTML转义
+        // 注意：我们需要保留已有的HTML标签，只转义其他内容
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlContent;
+        const escapedContent = this.processNodeForTags(tempDiv);
+        
+        return escapedContent;
       } catch (e) {
         console.error('[NoteList] Error highlighting tags:', e);
         return content;
       }
     },
+    
+    // 递归处理DOM节点，转义文本并高亮标签
+    processNodeForTags(node) {
+      // 如果是文本节点，处理其中的标签
+      if (node.nodeType === Node.TEXT_NODE) {
+        const tagRegex = /#(\w+)(?=\s|$)/g;
+        return node.textContent.replace(tagRegex, (match) => {
+          const tag = match.substring(1); // 去掉#前缀
+          return `<span class="content-tag" data-tag="${tag}">${match}</span>`;
+        });
+      }
+      
+      // 如果是元素节点，处理其子节点
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        // 复制节点以获取其HTML结构
+        const clone = node.cloneNode(false);
+        
+        // 处理所有子节点
+        for (const child of node.childNodes) {
+          // 如果是文本节点，处理标签
+          if (child.nodeType === Node.TEXT_NODE) {
+            clone.innerHTML += this.processNodeForTags(child);
+          } else {
+            // 如果是元素节点，递归处理
+            const childResult = this.processNodeForTags(child);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = childResult;
+            while (tempDiv.firstChild) {
+              clone.appendChild(tempDiv.firstChild);
+            }
+          }
+        }
+        
+        return clone.outerHTML;
+      }
+      
+      return '';
+    },
     handleTagClick(event) {
       console.log('[NoteList] Tag click event:', event);
       if (event.target.classList.contains('content-tag')) {
+        // 从data-tag属性中获取标签名称
         const tag = event.target.dataset.tag;
-        console.log('[NoteList] Tag clicked:', tag);
-        this.$emit('filter-by-tag', tag);
-        event.stopPropagation();
+        if (tag) {
+          console.log('[NoteList] Tag clicked:', tag);
+          this.$emit('filter-by-tag', tag);
+          event.stopPropagation();
+        }
       }
     },
     toggleMenu(noteId) {
@@ -179,6 +251,7 @@ export default {
           return;
         }
 
+        // 使用show-comment-editor事件将笔记传递给父组件
         console.log('4. [NoteList] Emitting show-comment-editor event with note:', note);
         this.$emit('show-comment-editor', note);
         console.log('5. [NoteList] Event show-comment-editor emitted successfully.');
@@ -228,6 +301,14 @@ export default {
   padding: 20px;
 }
 
+/* 移除ul的默认样式 */
+.note-list ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
 .note-item {
   background: #ffffff;
   border: 1px solid #e0e0e0;
@@ -268,17 +349,24 @@ export default {
 }
 
 .content-tag {
-  background: none;
+  color: #6200ee; /* 紫色标签文本 */
+  background-color: rgba(98, 0, 238, 0.1); /* 轻微的紫色背景 */
+  border-radius: 3px;
+  padding: 1px 3px;
+  margin: 0 1px;
   display: inline;
   vertical-align: baseline;
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
-  padding: 0;
-  margin: 0;
   border: none;
   box-shadow: none;
   cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.content-tag:hover {
+  background-color: rgba(98, 0, 238, 0.2);
 }
 
 .highlight-layer span {
@@ -319,12 +407,87 @@ export default {
 .dropdown-toggle {
   background: none;
   border: none;
-  padding: 5px;
+  padding: 5px 8px;
   cursor: pointer;
   outline: none;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 5;
+}
+.dropdown-toggle:hover {
+  background-color: rgba(0,0,0,0.05);
 }
 .dropdown-toggle.dark-mode {
   color: #f5f5f5;
+}
+.dropdown-toggle.dark-mode:hover {
+  background-color: rgba(255,255,255,0.1);
+}
+
+.menu-dots-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.dropdown-toggle .menu-dots {
+  width: 4px;
+  height: 4px;
+  background-color: #555;
+  border-radius: 50%;
+  position: relative;
+}
+
+.dropdown-toggle .menu-dots::before,
+.dropdown-toggle .menu-dots::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background-color: #555;
+  border-radius: 50%;
+}
+
+.dropdown-toggle .menu-dots::before {
+  left: 0;
+  top: -6px;
+}
+
+.dropdown-toggle .menu-dots::after {
+  left: 0;
+  top: 6px;
+}
+
+.dropdown-toggle.dark-mode .menu-dots,
+.dropdown-toggle.dark-mode .menu-dots::before,
+.dropdown-toggle.dark-mode .menu-dots::after {
+  background-color: #f5f5f5;
+}
+
+/* 移除菜单按钮上的::after和::before伪元素 (三角形图标) */
+.dropdown-toggle::after,
+.dropdown-toggle:after,
+.dropdown-toggle.dark-mode::after,
+.dropdown-toggle.dark-mode:after,
+button.dropdown-toggle::after,
+button.dropdown-toggle:after,
+.dropdown .dropdown-toggle::after,
+.dropdown .dropdown-toggle:after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  margin: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .dropdown-menu {
@@ -338,30 +501,62 @@ export default {
   border: 1px solid #d9d9d9;
   border-radius: 4px;
   padding: 5px 0;
-  min-width: 80px;
+  min-width: 120px; /* 增加宽度以容纳图标 */
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
   z-index: 1200;
+  list-style-type: none; /* 确保没有列表项符号 */
+  margin: 0;
+  padding: 0;
 }
 .dropdown-menu.dark-mode {
   background-color: #333;
   border-color: #555;
 }
 
-.dropdown-menu li {
+.dropdown-menu li.menu-item {
   padding: 8px 15px;
   cursor: pointer;
   transition: background-color 0.2s ease;
   color: #333;
+  display: flex;
+  align-items: center;
 }
-.dropdown-menu.dark-mode li {
+.dropdown-menu.dark-mode li.menu-item {
   color: #f5f5f5;
 }
 
-.dropdown-menu li:hover {
+.dropdown-menu li.menu-item:hover {
   background-color: #eee;
 }
-.dropdown-menu.dark-mode li:hover {
+.dropdown-menu.dark-mode li.menu-item:hover {
   background-color: #555;
+}
+
+.dropdown-menu .menu-icon {
+  margin-right: 8px;
+  font-size: 1.1em;
+}
+
+.dropdown-menu .menu-text {
+  flex: 1;
+}
+
+.dropdown-menu .menu-divider {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 5px 0;
+}
+
+.dropdown-menu.dark-mode .menu-divider {
+  background-color: #555;
+}
+
+.dropdown-menu .delete-item {
+  color: #e53935;
+}
+
+.dropdown-menu.dark-mode .delete-item {
+  color: #ff5252;
 }
 
 .comment-btn {
@@ -405,9 +600,17 @@ export default {
 .note-meta span {
   color: var(--note-text-color);
 }
+.note-meta .date-info {
+  font-size: 0.8em;
+  color: #999;
+  font-weight: normal;
+}
 .note-meta.dark-mode {
   background-color: #222;
   border-top-color: #333;
+}
+.note-meta.dark-mode .date-info {
+  color: #777;
 }
 
 .note-tags {
@@ -425,5 +628,38 @@ export default {
 .tag.dark-mode {
   background-color: #37474f;
   color: #64b5f6;
+}
+
+.note-list.dark-mode .content-tag {
+  color: #bb86fc; /* 暗色模式下更亮的紫色 */
+  background-color: rgba(187, 134, 252, 0.2); /* 暗色模式下的背景 */
+}
+
+.note-list.dark-mode .content-tag:hover {
+  background-color: rgba(187, 134, 252, 0.3);
+}
+</style>
+
+<!-- 额外添加一个非scoped样式，处理外部组件框架的dropdown样式 -->
+<style>
+/* 处理Bootstrap或其他框架可能添加的三角形图标 */
+.note-list .dropdown-toggle::after,
+.note-list .dropdown-toggle:after,
+.note-list button.dropdown-toggle::after,
+.note-list button.dropdown-toggle:after,
+.note-list [class*="dropdown"] .dropdown-toggle::after,
+.note-list [class*="dropdown"] .dropdown-toggle:after,
+[data-v-2ce5c6e6].dropdown-toggle::after,
+[data-v-2ce5c6e6] .dropdown-toggle::after,
+button[data-v-2ce5c6e6]::after,
+button[data-v-2ce5c6e6]:after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  margin: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 </style>

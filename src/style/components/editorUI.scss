@@ -1,0 +1,128 @@
+@import "variables";
+
+/* 基本样式重置 */
+* {
+  box-sizing: border-box;
+}
+
+/* modal-content 类应用于 Portal 中动态创建的容器 */
+.modal-content {
+  position: fixed; /* 使用 fixed 定位在视口中 */
+  bottom: 5%; /* 底部留出空间 */
+  left: 50%; /* 居中 */
+  transform: translateX(-50%); /* 水平居中 */
+  z-index: $modal-z-index; /* 在背景之上 */
+  background-color: $dark-bg;
+  color: $light-text;
+  width: 90%;
+  max-width: $modal-max-width;
+  min-height: $modal-min-height;
+  max-height: $modal-max-height;
+  border-radius: 10px;
+  box-shadow: $modal-shadow;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  border: 3px solid $light-text;
+  box-sizing: border-box; /* 确保 padding 和 border 不增加总尺寸 */
+
+  &.dark-mode {
+    background-color: $dark-bg; /* 深色模式背景 */
+    color: $light-text; /* 深色模式文字 */
+    border: 3px solid $light-text;
+  }
+}
+
+/* editor-wrapper 类应用于 Portal 中动态创建的编辑器容器 */
+.editor-wrapper {
+  flex: 1;
+  position: relative;
+  margin-bottom: $default-margin;
+  background-color: $darker-bg;
+  border-radius: $editor-border-radius;
+  padding: $default-padding;
+  min-height: 180px;
+  max-height: 35vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+
+  &.dark-mode {
+    background-color: $darker-bg;
+  }
+}
+
+/* modal-actions 类应用于 Portal 中动态创建的按钮容器 */
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 5px;
+  padding: 0 10%;
+  width: 100%;
+  box-sizing: border-box;
+
+  /* 按钮样式应用于 Portal 中动态创建的按钮 */
+  button {
+    margin: 0 5%;
+  }
+}
+
+.submit-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: none;
+  background-color: $primary-color;
+  color: $light-text;
+  cursor: pointer;
+  font-weight: bold;
+  min-width: 80px;
+  transition: all $transition-speed ease;
+  order: 1;
+  flex: 0 0 40%;
+  box-sizing: border-box;
+
+  &:hover {
+    background-color: $primary-light;
+    transform: translateY(-2px);
+    box-shadow: $button-shadow;
+  }
+
+  &.dark-mode {
+    background-color: $primary-color;
+  }
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid $light-text;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.cancel-btn {
+  order: 2;
+  flex: 0 0 40%;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background-color: $button-bg;
+  color: $light-text;
+  cursor: pointer;
+  transition: all $transition-speed ease;
+  box-sizing: border-box;
+
+  &:hover {
+    background-color: $button-hover;
+    transform: translateY(-2px);
+  }
+} 

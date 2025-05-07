@@ -66,44 +66,21 @@
     />
 
     <div
-      v-if="showInput"
+      v-if="showInput || isAddingComment"
       style="position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:1200;max-width:100vw;width:600px;background:#222;border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,0.18);padding:24px 20px 16px 20px;pointer-events:auto;"
     >
+      <div v-if="isAddingComment" style="color:#fff;margin-bottom:10px;font-size:16px;font-weight:500;">
+        评论笔记 #{{ selectedNoteIdForComments }}
+      </div>
       <NoteEditor
-        :show-input="showInput"
+        :show-input="showInput || isAddingComment"
         :is-submitting="isSubmitting"
         :is-dark-mode="isDarkMode"
-        :value="editContent"
-        @input="editContent = $event"
-        @submit-note="handleSubmit"
-        @cancel-edit="cancelEdit"
+        :value="isAddingComment ? commentContent : editContent"
+        @input="handleEditorInput"
+        @submit-note="isAddingComment ? handleCommentSubmit($event) : handleSubmit($event)"
+        @cancel-edit="isAddingComment ? cancelComment() : cancelEdit()"
       />
-    </div>
-    <div
-      v-if="isAddingComment"
-      :class="[styles['comment-editor-section'], { [styles['dark-mode']]: isDarkMode }]"
-    >
-      <h4>评论笔记 #{{ selectedNoteIdForComments }}</h4>
-      <textarea
-        v-model="commentContent"
-        ref="commentInput"
-        placeholder="输入评论内容..."
-        :class="{ [styles['dark-mode']]: isDarkMode }"
-      />
-      <div :class="styles['comment-actions']">
-        <button
-          @click="submitComment"
-          :class="{ [styles['dark-mode']]: isDarkMode }"
-        >
-          提交
-        </button>
-        <button
-          @click="cancelComment"
-          :class="{ [styles['dark-mode']]: isDarkMode }"
-        >
-          取消
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -321,10 +298,29 @@ export default {
         const newNotes = response?.data || [];
 
         if (newNotes.length > 0) {
-          const processedNotes = newNotes.map(note => ({
-            ...note,
-            tags: note.tags || []
-          }));
+          const processedNotes = newNotes.map(note => {
+            // 尝试从localStorage获取纯文本
+            let plainText = localStorage.getItem(`note_plaintext_${note.id}`);
+            
+            // 如果localStorage中没有，从HTML提取
+            if (!plainText && note.content) {
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = note.content;
+              plainText = tempDiv.textContent || '';
+              
+              // 将提取的纯文本保存到localStorage
+              if (plainText) {
+                localStorage.setItem(`note_plaintext_${note.id}`, plainText);
+              }
+            }
+            
+            return {
+              ...note,
+              plainText: plainText || '', // 添加plainText字段
+              tags: note.tags || []
+            };
+          });
+          
           this.notes = initialLoad ? processedNotes : [...this.notes, ...processedNotes];
           this.currentOffset += newNotes.length;
           this.hasMore = newNotes.length === 50;
@@ -389,9 +385,41 @@ export default {
       }
     },
     handleEditNote(note) {
-      console.log('准备编辑笔记:', note.id);
+      console.log('准备编辑笔记', note.id);
       this.editingNote = { ...note }; // Use spread for a shallow copy
-      this.editContent = note.content || '';
+      
+      // 尝试从不同来源获取纯文本内容
+      let plainText = '';
+      
+      // 1. 首先尝试从note对象中获取plainText
+      if (note.plainText) {
+        plainText = note.plainText;
+        console.log('使用笔记对象中的纯文本内容:', plainText);
+      } 
+      // 2. 然后尝试从localStorage获取
+      else if (note.id) {
+        const storedPlainText = localStorage.getItem(`note_plaintext_${note.id}`);
+        if (storedPlainText) {
+          plainText = storedPlainText;
+          console.log('从localStorage获取到纯文本:', plainText);
+        }
+      }
+      
+      // 3. 如果前两种方法都没有找到纯文本，尝试从HTML中提取
+      if (!plainText) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = note.content || '';
+        plainText = tempDiv.textContent || '';
+        console.log('从HTML中提取纯文本内容:', plainText);
+        
+        // 提取后保存到localStorage以备将来使用
+        if (note.id && plainText) {
+          localStorage.setItem(`note_plaintext_${note.id}`, plainText);
+          console.log('已将从HTML提取的纯文本保存到localStorage');
+        }
+      }
+      
+      this.editContent = plainText;
       this.showInput = true;
     },
     async handleSubmit(contentFromEditor) {
@@ -407,8 +435,23 @@ export default {
 
       this.isSubmitting = true;
       const isEditing = !!this.editingNote;
-      const noteData = { content: contentFromEditor }; // 不再需要手动提取标签
-
+      
+      // 保存纯文本内容
+      const plainText = contentFromEditor.trim();
+      
+      // 从纯文本中提取标签
+      const extractedTags = (plainText.match(/#([^\s#]+)/g) || [])
+        .map(tag => tag.substring(1)); 
+      console.log('从纯文本中提取的标签:', extractedTags);
+      
+      // 直接使用纯文本创建笔记数据，不转换为HTML
+      const noteData = { 
+        content: plainText,
+        tags: extractedTags
+      };
+      
+      console.log('提交到API的纯文本数据:', noteData);
+      
       try {
         if (isEditing) {
           await flomoApi.updateNote(this.editingNote.id, noteData);
@@ -418,20 +461,21 @@ export default {
           if (index !== -1) {
             this.notes.splice(index, 1, {
               ...this.notes[index],
-              content: contentFromEditor,
+              content: plainText,
               tags: extractedTags,
               updated_at: new Date().toISOString()
             });
           }
-          this.sortMethod = this.sortMethod;
-
         } else {
           console.log('正在创建新笔记');
           const response = await flomoApi.createNote(noteData);
           console.log('笔记创建成功:', response?.data);
 
           if (response?.data) {
-            this.notes.unshift({ ...response.data, tags: response.data.tags || [] });
+            this.notes.unshift({
+              ...response.data,
+              tags: response.data.tags || []
+            });
             this.cachedDraftContent = '';
             this.editContent = '';
             // 新笔记创建成功后同时清空编辑器内容和缓存
@@ -611,6 +655,10 @@ export default {
 
       this.selectedNoteIdForComments = note.id;
       this.isAddingComment = true;
+      
+      // 确保先关闭标准的编辑窗口
+      this.showInput = false;
+      this.editingNote = null;
 
       // 获取笔记创建时间并格式化为YYYYMMDDHHmmss
       const createdAt = new Date(note.created_at);
@@ -630,40 +678,53 @@ export default {
       console.groupEnd();
     },
 
-    async submitComment() {
-      if (!this.selectedNoteIdForComments || !this.commentContent.trim()) {
+    handleEditorInput(content) {
+      console.log('编辑器内容变化:', content);
+      if (this.isAddingComment) {
+        this.commentContent = content;
+      } else {
+        this.editContent = content;
+      }
+    },
+    
+    handleCommentSubmit(content) {
+      console.log('提交评论，内容:', content);
+      if (!this.selectedNoteIdForComments || !content.trim()) {
+        console.log('评论为空或没有选中笔记ID，取消提交');
         return;
       }
-      try {
-        const response = await flomoApi.addCommentToNote(
-          this.selectedNoteIdForComments,
-          { content: this.commentContent }
-        );
-        if (response.status === 200 || response.status === 201) {
-          console.log('评论提交成功:', response.data);
+      
+      this.isSubmitting = true;
+      
+      flomoApi.addCommentToNote(this.selectedNoteIdForComments, { content })
+        .then(response => {
+          console.log('评论提交成功:', response);
           this.commentContent = '';
           this.isAddingComment = false;
+          // 刷新评论列表
           this.fetchComments(this.selectedNoteIdForComments);
-        }
-      } catch (error) {
-        console.error('提交评论出错:', error);
-      }
+          // 刷新笔记列表，因为评论现在也是笔记
+          this.loadNotes(true);
+          // 显示成功消息
+          this.$nextTick(() => {
+            console.log('评论已添加，且笔记列表已刷新');
+          });
+        })
+        .catch(error => {
+          console.error('提交评论失败:', error);
+        })
+        .finally(() => {
+          this.isSubmitting = false;
+        });
     },
 
     cancelComment() {
+      console.log('取消评论');
       this.isAddingComment = false;
       this.commentContent = '';
+      this.selectedNoteIdForComments = null;
     },
 
-    async fetchComments(noteId) {
-      try {
-        const response = await flomoApi.getCommentsForNote(noteId);
-        this.comments = response.data || [];
-      } catch (error) {
-        console.error('加载评论失败:', error);
-        this.comments = [];
-      }
-    },
     initScrollObserver() {
       const options = {
         root: null,

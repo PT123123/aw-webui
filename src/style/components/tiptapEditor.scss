@@ -1,0 +1,56 @@
+@import "variables";
+
+/* 整个组件容器，控制 Portal 场景下包裹 showInput 的最外层 div */
+.note-editor-container {
+  /* 如果你需要给最外层容器加 Portal 的 fixed 定位，可以在这里加 */
+  /* position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999998; */
+  /* 但我们的 Portal Wrapper 已经有这些样式了，所以这个容器可能只需要 v-if 来控制存在 */
+}
+
+/* tiptap-editor 类应用于 Portal 中动态创建的实际 Tiptap 绑定元素 */
+.tiptap-editor {
+  /* flex: 1; */
+  height: 100%;
+  width: 100%;
+  outline: none;
+  padding: $default-padding;
+  font-size: 16px;
+  color: $light-text;
+  background-color: transparent;
+  line-height: 1.5;
+  caret-color: $primary-accent !important;
+  overflow-y: auto;
+  box-sizing: border-box; /* 确保 padding 不影响尺寸 */
+
+  /* 确保可编辑区域显示光标 */
+  [contenteditable="true"] {
+    caret-color: $primary-accent !important;
+    cursor: text !important;
+    min-height: 100%; /* 确保可编辑区域撑满父容器 */
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  &:focus-within,
+  [contenteditable="true"]:focus {
+    caret-color: $primary-accent !important;
+    outline: none;
+  }
+
+  &.focus-visible,
+  [contenteditable="true"].focus-visible {
+    outline: 2px solid $primary-accent;
+    outline-offset: -2px;
+  }
+}
+
+/* 光标行高亮 */
+/* 这些样式会由 CursorHighlight 扩展应用到内部的段落等块级元素上 */
+.cursor-line-highlight {
+  background-color: rgba($primary-color, 0.15);
+  border-radius: 4px;
+  box-shadow: $cursor-shadow;
+  padding: 2px 0;
+  margin: 0; /* important for lists etc. */
+  display: block; /* important */
+} 

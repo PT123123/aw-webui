@@ -45,14 +45,9 @@ export default {
 
   async createNote(data) {
     try {
-      // 提取标签并添加到请求数据中
-      const tags = data.content.match(/#([^\s#]+)/g)?.map(tag => tag.substring(1)) || [];
-      const requestData = {
-        ...data,
-        tags: [...new Set([...(data.tags || []), ...tags])] // 合并传入的标签和提取的标签
-      };
-      
-      const response = await axios.post('/inbox/notes', requestData);
+      // 直接传递数据，因为现在都是纯文本
+      console.log('创建笔记，发送数据:', data);
+      const response = await axios.post('/inbox/notes', data);
       return response;
     } catch (error) {
       console.error('创建笔记失败:', error.response?.data || error.message);
@@ -63,14 +58,9 @@ export default {
   // 新增更新方法
   async updateNote(id, data) {
     try {
-      // 提取标签并添加到请求数据中
-      const tags = data.content.match(/#([^\s#]+)/g)?.map(tag => tag.substring(1)) || [];
-      const requestData = {
-        ...data,
-        tags: [...new Set([...(data.tags || []), ...tags])] // 合并传入的标签和提取的标签
-      };
-      
-      const response = await axios.put(`/inbox/notes/${id}`, requestData);
+      // 直接传递数据，因为现在都是纯文本
+      console.log('更新笔记，发送数据:', data);
+      const response = await axios.put(`/inbox/notes/${id}`, data);
       return response;
     } catch (error) {
       console.error('更新笔记失败:', error.response?.data || error.message);
