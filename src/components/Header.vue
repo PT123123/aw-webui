@@ -1,6 +1,6 @@
 <template lang="pug">
 div(:class="{'fixed-top-padding': fixedTopMenu}")
-  b-navbar.aw-navbar(toggleable="lg" :fixed="fixedTopMenu ? 'top' : null")
+  b-navbar.aw-navbar(toggleable="lg" :fixed="fixedTopMenu ? 'top' : null" ref="navbar")
     // Brand on mobile
     b-navbar-nav.d-block.d-lg-none
       b-navbar-brand(to="/" style="background-color: transparent;")
@@ -139,7 +139,9 @@ export default {
     return {
       activityViews: null,
       // Make configurable?
-      fixedTopMenu: this.$isAndroid,
+      // @ts-ignore - $isAndroid可能是通过Vue.prototype添加的全局属性
+      fixedTopMenu: this.$isAndroid ?? false,
+      isNavMenuOpen: false,
     };
   },
   computed: {
@@ -185,7 +187,142 @@ export default {
     });
 
     this.activityViews = activityViews;
+
+    // 设置点击外部关闭导航栏功能
+    console.group('[topmenu] 初始化导航栏点击外部关闭功能');
+    
+    // 延迟设置，确保DOM已完全渲染
+    this.$nextTick(() => {
+      console.log('[topmenu] DOM已更新，准备设置事件监听');
+      
+      // 检查导航栏组件是否存在
+      if (!this.$refs.navbar) {
+        console.error('[topmenu] 无法找到导航栏组件引用');
+        return;
+      }
+      
+      console.log('[topmenu] 导航栏组件:', this.$refs.navbar);
+      
+      // 获取实际的DOM元素
+      const navbarEl = this.$refs.navbar.$el;
+      if (!navbarEl) {
+        console.error('[topmenu] 无法找到导航栏DOM元素');
+        return;
+      }
+      
+      console.log('[topmenu] 导航栏DOM元素:', navbarEl);
+      
+      // 获取折叠菜单元素和切换按钮
+      const collapseEl = navbarEl.querySelector('#nav-collapse');
+      const togglerEl = navbarEl.querySelector('.navbar-toggler');
+      
+      console.log('[topmenu] 折叠菜单元素:', collapseEl);
+      console.log('[topmenu] 切换按钮元素:', togglerEl);
+      
+      // 使用MutationObserver监视折叠菜单的class变化
+      if (collapseEl) {
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.attributeName === 'class') {
+              const isExpanded = collapseEl.classList.contains('show');
+              console.log(`[topmenu] 导航菜单状态变化: ${isExpanded ? '已展开' : '已折叠'}`);
+              this.isNavMenuOpen = isExpanded;
+            }
+          });
+        });
+        
+        observer.observe(collapseEl, { attributes: true });
+        console.log('[topmenu] 已设置折叠菜单状态监视器');
+        
+        // 保存observer引用以便后续清理
+        this._navCollapseObserver = observer;
+      }
+      
+      // 添加全局点击事件监听
+      document.addEventListener('click', this.handleOutsideClick);
+      console.log('[topmenu] 已添加全局点击事件监听');
+    });
+    
+    console.groupEnd();
   },
+  
+  beforeDestroy() {
+    console.log('[topmenu] 组件销毁，移除事件监听器');
+    
+    // 移除MutationObserver
+    if (this._navCollapseObserver) {
+      this._navCollapseObserver.disconnect();
+      console.log('[topmenu] 已移除折叠菜单状态监视器');
+    }
+    
+    // 移除点击事件监听器
+    document.removeEventListener('click', this.handleOutsideClick);
+    console.log('[topmenu] 已移除全局点击事件监听');
+  },
+  
+  methods: {
+    // 处理点击外部区域事件
+    handleOutsideClick(event) {
+      console.group('[topmenu] 处理点击事件');
+      
+      // 检查导航栏是否处于展开状态
+      if (!this.isNavMenuOpen) {
+        console.log('[topmenu] 导航栏未展开，无需处理');
+        console.groupEnd();
+        return;
+      }
+      
+      console.log('[topmenu] 导航栏已展开，检查点击位置');
+      
+      // 获取导航栏和折叠菜单元素
+      const navbar = this.$refs.navbar.$el;
+      const navCollapse = navbar.querySelector('#nav-collapse');
+      const togglerBtn = navbar.querySelector('.navbar-toggler');
+      
+      // 检查点击是否在切换按钮上
+      if (togglerBtn && togglerBtn.contains(event.target)) {
+        console.log('[topmenu] 点击在切换按钮上，无需额外处理');
+        console.groupEnd();
+        return;
+      }
+      
+      // 检查点击是否在导航菜单外部
+      if (navCollapse && !navCollapse.contains(event.target)) {
+        console.log('[topmenu] 点击在导航菜单外部，准备关闭菜单');
+        
+        // 方法1: 使用Bootstrap-Vue API
+        if (this.$refs.navbar && typeof this.$refs.navbar.toggle === 'function') {
+          console.log('[topmenu] 使用Bootstrap-Vue API关闭菜单');
+          this.$refs.navbar.toggle(false);
+        }
+        // 方法2: 直接点击切换按钮
+        else if (togglerBtn) {
+          console.log('[topmenu] 模拟点击切换按钮关闭菜单');
+          togglerBtn.click();
+        }
+        // 方法3: 使用Bootstrap原生API (通过jQuery)
+        else if ((window as any).jQuery && navCollapse) {
+          console.log('[topmenu] 使用Bootstrap原生API关闭菜单');
+          try {
+            ((window as any).jQuery)(navCollapse).collapse('hide');
+          } catch (err) {
+            console.error('[topmenu] jQuery调用失败:', err);
+          }
+        }
+        else {
+          console.warn('[topmenu] 无法找到合适的方法关闭菜单');
+        }
+      } else {
+        console.log('[topmenu] 点击在导航菜单内部，保持菜单打开');
+      }
+      
+      console.groupEnd();
+    },
+    
+    // 原有代码移除，改用MutationObserver实现
+    // handleNavbarShown() {...},
+    // handleNavbarHidden() {...},
+  }
 };
 </script>
 

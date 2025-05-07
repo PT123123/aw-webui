@@ -67,6 +67,7 @@ export default {
       _portalCancelHandler: null,
       _portalSubmitHandler: null,
       _portalContentClickHandler: null, // Added for stopPropagation on content
+      _documentClickHandler: null, // 新增：用于全局点击监听
       internalEditorValue: '',
       isRichEditorReadyInPortal: false,
       // No need to store movableContent here if we always access via $refs.movableContent
@@ -191,9 +192,9 @@ export default {
     },
     
     createPortal() {
-      console.log('[NoteEditor] createPortal (DOM Move Strategy)');
+      console.log('[editorcollapse] 创建编辑器Portal');
       if (this.portalTarget) {
-        console.warn('[NoteEditor] Portal target already exists. Destroying before recreating.');
+        console.warn('[editorcollapse] Portal已存在，先销毁再创建');
         this.destroyEditorAndRemovePortal();
       }
       
@@ -201,7 +202,7 @@ export default {
       this.portalTarget.id = 'note-editor-portal-target-' + Date.now();
       document.body.appendChild(this.portalTarget);
 
-        this.portalWrapper = document.createElement('div');
+      this.portalWrapper = document.createElement('div');
       this.portalWrapper.className = 'note-editor-portal-wrapper';
       if (this.isDarkMode) this.portalWrapper.classList.add('dark-mode');
       
@@ -209,18 +210,20 @@ export default {
       this.portalBackdrop.className = 'note-editor-portal-backdrop';
       this._portalBackdropClickHandler = (event) => {
         if (event.target === this.portalBackdrop) {
+          console.log('[editorcollapse] 检测到背景点击，准备关闭编辑器');
           // 检查 prop 但不输出警告
           const hasCancelProp = this.onCancelRequest && typeof this.onCancelRequest === 'function';
           
           if (hasCancelProp) {
+            console.log('[editorcollapse] 使用传入的onCancelRequest关闭编辑器');
             this.onCancelRequest();
           } else {
             // 直接使用备用机制，不输出警告
-            console.log('[NoteEditor] Backdrop: 使用备用关闭机制');
+            console.log('[editorcollapse] 使用备用关闭机制');
             this.$emit('cancel-edit');
             
             if (this.showInput) {
-              console.log('[NoteEditor] Backdrop: 内部关闭编辑器');
+              console.log('[editorcollapse] 内部关闭编辑器');
               setTimeout(() => {
                 this.destroyEditorAndRemovePortal();
                 this.$emit('update:showInput', false);
@@ -230,6 +233,78 @@ export default {
         }
       };
       this.portalBackdrop.addEventListener('click', this._portalBackdropClickHandler);
+      console.log('[editorcollapse] 已添加背景点击事件监听');
+
+      // 添加全局点击事件监听，处理编辑器外部的点击
+      this._documentClickHandler = (event) => {
+        // 如果编辑器未显示，不处理
+        if (!this.showInput) return;
+        
+        console.group('[editorcollapse] 处理全局点击事件');
+        console.log('[editorcollapse] 点击目标:', event.target);
+        
+        // 阻止事件冒泡和重复处理
+        if (event._handledByDocumentClickHandler) {
+          console.log('[editorcollapse] 事件已处理，避免重复处理');
+          console.groupEnd();
+          return;
+        }
+        event._handledByDocumentClickHandler = true;
+        
+        // 检查是否为背景点击事件，避免与背景点击处理器冲突
+        if (event.target === this.portalBackdrop) {
+          console.log('[editorcollapse] 点击为背景区域，由背景点击处理器处理');
+          console.groupEnd();
+          return;
+        }
+        
+        // 检查点击是否在实际的编辑器内容区域内
+        const modalContent = this.portalContent ? this.portalContent.querySelector('.modal-content') : null;
+        if (modalContent && modalContent.contains(event.target)) {
+          console.log('[editorcollapse] 点击在编辑器内容区域内，不关闭');
+          console.groupEnd();
+          return;
+        }
+        
+        // 检查点击是否在任何按钮上
+        const isButtonClick = event.target.tagName === 'BUTTON' || 
+                             event.target.closest('button') !== null;
+        if (isButtonClick) {
+          console.log('[editorcollapse] 点击在按钮上，不关闭编辑器');
+          console.groupEnd();
+          return;
+        }
+        
+        // 此时点击确实在编辑器外部，关闭编辑器
+        console.log('[editorcollapse] 点击在编辑器区域外，准备关闭');
+        
+        // 检查是否有取消回调
+        const hasCancelProp = this.onCancelRequest && typeof this.onCancelRequest === 'function';
+        if (hasCancelProp) {
+          console.log('[editorcollapse] 使用传入的onCancelRequest关闭编辑器');
+          this.onCancelRequest();
+        } else {
+          console.log('[editorcollapse] 使用备用关闭机制');
+          this.$emit('cancel-edit');
+          
+          if (this.showInput) {
+            console.log('[editorcollapse] 内部关闭编辑器');
+            setTimeout(() => {
+              this.destroyEditorAndRemovePortal();
+              this.$emit('update:showInput', false);
+            }, 50);
+          }
+        }
+        
+        console.groupEnd();
+      };
+      
+      // 在下一个事件循环添加全局点击事件监听，避免当前点击事件立即触发
+      setTimeout(() => {
+        // 使用捕获阶段监听，确保在事件冒泡到文档之前捕获它
+        document.addEventListener('click', this._documentClickHandler, true);
+        console.log('[editorcollapse] 已添加全局点击事件监听（捕获阶段）');
+      }, 100);
 
       // Create the content host in the portal wrapper, but DON'T clone.
       this.portalContent = document.createElement('div');
@@ -338,7 +413,7 @@ export default {
     },
 
     destroyEditorAndRemovePortal() {
-      console.log('[NoteEditor] destroyEditorAndRemovePortal (DOM Move)');
+      console.log('[editorcollapse] 销毁编辑器并移除Portal');
       this.isRichEditorReadyInPortal = false;
 
       // 移除所有事件监听器
@@ -350,13 +425,13 @@ export default {
         }
         const cancelBtn = this.$refs.movableContent.querySelector('[data-testid="note-editor-cancel-button"]');
         if (cancelBtn) {
-            console.log('[NoteEditor] Destroy: Found cancel button. Current _portalCancelHandler to remove:', this._portalCancelHandler);
+            console.log('[editorcollapse] 找到取消按钮，移除事件监听');
             if (this._portalCancelHandler) {
                 cancelBtn.removeEventListener('click', this._portalCancelHandler);
-                console.log('[NoteEditor] Destroy: Removed _portalCancelHandler from cancel button.');
+                console.log('[editorcollapse] 已移除取消按钮的事件监听');
             }
           } else {
-            console.warn('[NoteEditor] Destroy: Cancel button not found in movableContent.');
+            console.warn('[editorcollapse] 未找到取消按钮');
         }
       }
       
@@ -364,6 +439,14 @@ export default {
       if (this.portalBackdrop && this._portalBackdropClickHandler) {
         this.portalBackdrop.removeEventListener('click', this._portalBackdropClickHandler);
         this._portalBackdropClickHandler = null;
+        console.log('[editorcollapse] 已移除背景点击事件监听');
+      }
+      
+      // 移除全局点击监听器
+      if (this._documentClickHandler) {
+        document.removeEventListener('click', this._documentClickHandler);
+        this._documentClickHandler = null;
+        console.log('[editorcollapse] 已移除全局点击事件监听');
       }
       
       // 移除内容点击监听器
