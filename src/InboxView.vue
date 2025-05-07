@@ -63,17 +63,8 @@
     <main :class="[styles['main-content'], { [styles['dark-mode']]: isDarkMode }]">
       <div :class="[styles['controls'], { [styles['dark-mode']]: isDarkMode }]">
         <div class="sort-options">
-          <button
-            @click="sortBy('created')"
-            :class="{ [styles['active']]: sortMethod === 'created' }"
-          >
-            按创建时间
-          </button>
-          <button
-            @click="sortBy('updated')"
-            :class="{ [styles['active']]: sortMethod === 'updated' }"
-          >
-            按修改时间
+          <button @click="toggleSortMethod" class="sort-toggle-btn">
+            {{ sortMethod === 'created' ? '⏱ 创建时间' : '🔄 修改时间' }}
           </button>
         </div>
         <button
@@ -560,6 +551,143 @@ export default {
       });
       this.scrollObserver = observer;
     },
+    toggleSortMethod() {
+      this.sortMethod = this.sortMethod === 'created' ? 'updated' : 'created';
+      console.log(`排序方法切换为: ${this.sortMethod}`);
+    },
+    sortBy(method) {
+      console.log(`sortBy('${method}') 被调用，为兼容旧代码重定向到 toggleSortMethod()`);
+      // 如果当前排序方法已经是请求的方法，不做任何事情
+      if (this.sortMethod === method) return;
+      // 否则切换到请求的方法
+      this.sortMethod = method;
+    },
   },
 }
 </script>
+
+<style scoped>
+/* 添加排序按钮样式 */
+.sort-options {
+  display: flex;
+  align-items: center;
+}
+
+.sort-options button {
+  padding: 6px 12px;
+  background-color: #5cb85c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  min-width: 120px; /* 确保按钮有足够宽度显示文本 */
+  text-align: center;
+}
+
+.sort-options button:hover {
+  background-color: #4cae4c;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sort-options button:active {
+  background-color: #449d44;
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.sort-options button span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 深色模式样式 */
+:global(.dark-mode) .sort-options button {
+  background-color: #4a784a;
+  color: #e9e9e9;
+}
+
+:global(.dark-mode) .sort-options button:hover {
+  background-color: #3e623e;
+}
+
+/* 响应式样式 */
+@media (max-width: 768px) {
+  .sort-options button {
+    min-width: 100px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sort-options button {
+    min-width: 45px; /* 更小的宽度，主要显示图标 */
+    padding: 5px 6px;
+    font-size: 12px;
+  }
+  
+  /* 在小屏幕上只显示图标，隐藏文字 */
+  .sort-options button span {
+    display: flex;
+    justify-content: center;
+  }
+  
+  .sort-options button span::after {
+    content: none; /* 清除可能有的伪元素内容 */
+  }
+  
+  .sort-options button span::before {
+    content: attr(data-mobile-text);
+    font-size: 16px; /* 图标大一点，增强可点击性 */
+  }
+  
+  /* 隐藏原始文本 */
+  .sort-options button span {
+    font-size: 0; /* 原文本大小设为0，只显示图标 */
+  }
+}
+
+.sort-toggle-btn {
+  padding: 8px 15px;
+  background-color: #5cb85c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+  min-width: 120px;
+}
+
+.sort-toggle-btn:hover {
+  background-color: #4cae4c;
+}
+
+.sort-toggle-btn:active {
+  background-color: #449d44;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* 深色模式样式 */
+:global(.dark-mode) .sort-toggle-btn {
+  background-color: #4a784a;
+  color: #f0f0f0;
+}
+
+:global(.dark-mode) .sort-toggle-btn:hover {
+  background-color: #3e623e;
+}
+
+/* 响应式调整 */
+@media (max-width: 480px) {
+  .sort-toggle-btn {
+    min-width: auto;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+}
+</style>

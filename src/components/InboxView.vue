@@ -753,6 +753,17 @@ export default {
       });
       this.scrollObserver = observer;
     },
+    sortBy(newSortMethod) {
+      console.log('[InboxView] sortBy method called by event. Received newSortMethod:', newSortMethod);
+      if (this.sortMethod !== newSortMethod) {
+        this.sortMethod = newSortMethod;
+        console.log('[InboxView] sortMethod in data updated to:', this.sortMethod);
+        // 排序后，NoteList组件会因为sortedNotes计算属性的改变而自动更新
+        // 无需显式调用 fetchNotes，除非排序需要在后端完成
+      } else {
+        console.log('[InboxView] sortBy called but sortMethod is already:', newSortMethod, '. No change needed.');
+      }
+    },
   },
 }
 </script>

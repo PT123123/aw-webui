@@ -2,9 +2,19 @@
   <div class="inbox-view-container">
     <header class="inbox-header">
       <h1>我的收件箱</h1>
-      <button @click="openNewNoteEditor" class="new-note-btn">
-        + 新建笔记
-      </button>
+      <div class="header-actions">
+        <div class="sort-options">
+          <button 
+            @click="toggleSortField" 
+            class="sort-toggle-btn"
+          > 
+            {{ sortParams.field === 'created_at' ? '⏱ 创建时间' : '🔄 修改时间' }}
+          </button>
+        </div>
+        <button @click="openNewNoteEditor" class="new-note-btn">
+          + 新建笔记
+        </button>
+      </div>
     </header>
 
     <!-- 简单的笔记列表占位符 -->
@@ -12,7 +22,7 @@
       <div v-for="note in notes" :key="note.id" class="note-item" @click="openEditNoteEditor(note)">
         <h4>{{ note.content.substring(0, 30) }}{{ note.content.length > 30 ? '...' : '' }}</h4>
         <p><small>标签: {{ note.tags && note.tags.join(', ') }}</small></p>
-        <small>更新于: {{ new Date(note.updated_at).toLocaleDateString() }}</small>
+        <small>{{ sortParams.field === 'updated_at' ? '更新于' : '创建于' }}: {{ new Date(note[sortParams.field]).toLocaleDateString() }}</small>
       </div>
     </div>
     <div v-else-if="!isLoadingNotes && notes.length === 0" class="empty-notes">
@@ -51,11 +61,40 @@ export default {
       editingNote: null,      
       notes: [],              
       isLoadingNotes: false,
+      sortParams: { // 新增排序参数
+        field: 'updated_at', // 默认按更新时间排序
+        order: 'desc'        // 默认降序 (最新优先)
+      },
     };
   },
+  computed: {
+    sortButtonText() {
+      if (this.sortParams.field === 'updated_at') {
+        return '🔄 修改时间';
+      } else {
+        return '⏱ 创建时间';
+      }
+    }
+  },
   methods: {
-    // --- 方法来控制 NoteEditor 的显示 ---
-    // 你需要根据实际的触发方式来实现这些，例如绑定到某个按钮的点击事件
+    toggleSortField() {
+      if (this.sortParams.field === 'updated_at') {
+        this.sortParams.field = 'created_at';
+      } else {
+        this.sortParams.field = 'updated_at';
+      }
+      // The order is assumed to remain 'desc' or handled by backend default
+      console.log(`[views/InboxView] Sort field changed to: ${this.sortParams.field}`);
+      this.fetchNotes(); // Re-fetch notes with the new sort field
+    },
+    sortBy(method) {
+      console.log(`[views/InboxView] sortBy('${method}') called. Current field: ${this.sortParams.field}`);
+      const targetField = method === 'created' ? 'created_at' : 'updated_at';
+      if (this.sortParams.field !== targetField) {
+        this.sortParams.field = targetField;
+        this.fetchNotes();
+      }
+    },
     openNewNoteEditor() {
       this.editingNote = null;
       this.editContent = ''; 
@@ -74,24 +113,18 @@ export default {
       this.showInput = true;
       console.log(`[InboxView] Opening editor for note ID: ${noteToEdit.id}`);
     },
-
-    // --- 事件处理方法 ---
     handleCancelEdit() {
       console.log('[InboxView] handleCancelEdit method CALLED. Closing editor.');
       this.showInput = false;
       this.editingNote = null;
       this.editContent = '';
     },
-    
-    // 这个 cancelEdit 方法似乎是在 handleSubmit 成功后调用的，逻辑上与 handleCancelEdit 重复
-    // 考虑是否可以统一为一个方法，或者确保其用途清晰
     _internalCancelAndResetEditor() { 
       console.log('[InboxView] _internalCancelAndResetEditor (e.g., after submit)');
       this.showInput = false;
       this.editingNote = null;
       this.editContent = '';
     },
-
     async handleSubmit(contentFromEditor) {
       console.groupCollapsed('InboxView handleSubmit');
       const contentToCheck = contentFromEditor || '';
@@ -128,9 +161,9 @@ export default {
               ...this.notes[index],
               content: contentToCheck,
               tags: noteData.tags,
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
+              // created_at remains the same
             };
-            // 在 Vue 2 中，使用 Vue.set 或 this.$set 来确保数组更新的响应性
             this.$set(this.notes, index, updatedNoteInList);
             console.log('Note updated in local list.');
           } else {
@@ -144,7 +177,9 @@ export default {
           if (response?.data) {
             this.notes.unshift({ 
               ...response.data, 
-              tags: response.data.tags || [] 
+              tags: response.data.tags || [],
+              created_at: response.data.created_at || new Date().toISOString(), // Ensure created_at is present
+              updated_at: response.data.updated_at || new Date().toISOString()  // Ensure updated_at is present
             });
             console.log('New note added to local list.', response.data);
           } else {
@@ -152,7 +187,7 @@ export default {
             await this.fetchNotes();
           }
         }
-        this._internalCancelAndResetEditor(); // 关闭并重置编辑器状态
+        this._internalCancelAndResetEditor();
         console.log(`Note ${isEditing ? 'updated' : 'created'} successfully.`);
       } catch (error) {
         console.error(`Error ${isEditing ? 'updating' : 'creating'} note:`, error);
@@ -161,18 +196,21 @@ export default {
         console.groupEnd();
       }
     },
-    
     extractTagsFromContent(content) {
       const targetContent = content || '';
       const matches = targetContent.match(/#([^\s#]+)/g) || [];
       return matches.map(tag => tag.substring(1));
     },
-    
     async fetchNotes() {
       this.isLoadingNotes = true;
-      console.log('[InboxView] Fetching notes...');
+      console.log(`[InboxView] Fetching notes (Sort by: ${this.sortParams.field}, Order: ${this.sortParams.order})...`);
       try {
-        const response = await flomoApi.getNotes({ limit: 50, offset: 0 });
+        const response = await flomoApi.getNotes({ 
+          limit: 50, 
+          offset: 0,
+          sort_by: this.sortParams.field,  // 使用排序参数
+          sort_order: this.sortParams.order // 使用排序参数
+        });
         this.notes = response?.data || [];
         console.log('[InboxView] Notes fetched:', this.notes.length);
       } catch (error) {
@@ -186,16 +224,14 @@ export default {
   mounted() {
     console.log('[InboxView] Component mounted. Fetching initial notes.');
     console.log('[InboxView mounted] typeof this.handleCancelEdit:', typeof this.handleCancelEdit, 'Is function:', this.handleCancelEdit instanceof Function);
-    this.fetchNotes();
+    this.fetchNotes(); // Initial fetch with default sort
   },
   watch: {
     showInput(newVal, oldVal) {
       console.log(`[InboxView WATCH showInput] Changed from ${oldVal} to ${newVal}`);
       if (newVal) {
-        // 当 showInput 变为 true 时，也检查一下 handleCancelEdit
         console.log('[InboxView WATCH showInput true] typeof this.handleCancelEdit:', typeof this.handleCancelEdit, 'Is function:', this.handleCancelEdit instanceof Function);
       } else {
-        // 当 showInput 变为 false 时 (例如编辑器关闭后)
         console.log('[InboxView WATCH showInput false] Editor should be closing or closed.');
       }
     }
@@ -222,6 +258,70 @@ export default {
     margin: 0;
     font-size: 1.8em;
 }
+
+.header-actions {
+  display: flex;
+  gap: 10px; /* 按钮之间的间距 */
+  align-items: center;
+}
+
+/* 排序按钮容器 */
+.sort-options {
+  display: flex;
+}
+
+/* 排序按钮样式 */
+.sort-toggle-btn {
+  padding: 8px 15px;
+  background-color: #5cb85c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+  min-width: 120px; /* Adjust as needed */
+  text-align: center;
+}
+
+.sort-toggle-btn:hover {
+  background-color: #4cae4c;
+}
+
+.sort-toggle-btn:active {
+  background-color: #449d44;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Dark Mode for sort button */
+:global(.dark-mode) .sort-toggle-btn {
+  background-color: #4a784a;
+  color: #f0f0f0;
+}
+
+:global(.dark-mode) .sort-toggle-btn:hover {
+  background-color: #3e623e;
+}
+
+/* Responsive adjustments for sort button */
+@media (max-width: 480px) {
+  .sort-toggle-btn {
+    min-width: auto; /* Allow button to shrink */
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .header-actions {
+    flex-direction: column; /* Stack buttons on very small screens */
+    align-items: stretch;
+  }
+  .sort-toggle-btn, .new-note-btn {
+    width: 100%;
+  }
+  .new-note-btn {
+    margin-top: 5px; /* Space when stacked */
+  }
+}
+
 .new-note-btn {
   padding: 10px 18px;
   background-color: #007bff;
@@ -229,12 +329,14 @@ export default {
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  font-size: 1em;
+  font-size: 0.9em;
   transition: background-color 0.2s ease;
+  white-space: nowrap; /* 防止文字换行 */
 }
 .new-note-btn:hover {
   background-color: #0056b3;
 }
+
 .notes-list {
   margin-top: 20px;
 }
@@ -262,15 +364,36 @@ export default {
     color: #555;
 }
 .note-item small {
-    font-size: 0.8em;
-    color: #777;
-}
-.empty-notes,
-.is-loading-notes {
-  text-align: center;
+  font-size: 0.8em;
   color: #777;
-  margin-top: 50px;
-  font-size: 1.1em;
+}
+.empty-notes {
+  text-align: center;
+  margin-top: 40px;
+  color: #777;
+}
+
+/* 响应式调整 */
+@media (max-width: 600px) {
+  .inbox-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  .header-actions {
+    width: 100%;
+    justify-content: space-between; /* 分散对齐按钮 */
+  }
+  .sort-toggle-btn, .new-note-btn {
+    flex-grow: 1; /* 让按钮占据可用空间 */
+    text-align: center; /* 按钮文字居中 */
+    padding: 8px; /* 调整手机上的内边距 */
+    font-size: 0.8em;
+  }
+   .header-actions { /* 允许按钮换行，以防内容过多 */
+    flex-wrap: wrap;
+    gap: 8px; /* 调整手机上按钮间距 */
+  }
 }
 
 /* Dark Mode Styles (optional, based on isDarkMode prop if NoteEditor uses it) */
