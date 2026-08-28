@@ -72,7 +72,7 @@
 
     <div
       v-if="(showInput || isAddingComment) && $route.path.includes('/inbox')"
-      style="position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:1200;max-width:100vw;width:600px;background:#222;border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,0.18);padding:24px 20px 16px 20px;pointer-events:auto;"
+      style="position:fixed;left:0;bottom:0;transform:none;z-index:1200;max-width:100vw;width:100%;background:#222;border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,0.18);padding:24px 20px 16px 20px;pointer-events:auto;"
     >
       <div v-if="isAddingComment" style="color:#fff;margin-bottom:10px;font-size:16px;font-weight:500;">
         评论笔记 #{{ selectedNoteIdForComments }}
@@ -85,8 +85,19 @@
         @input="handleEditorInput"
         @submit-note="isAddingComment ? handleCommentSubmit($event) : handleSubmit($event)"
         @cancel-edit="isAddingComment ? cancelComment() : cancelEdit()"
+        @save-draft="saveDraft()"
       />
     </div>
+    <Toast
+      v-if="showUndoToast"
+      message="笔记已删除"
+      action-text="撤销"
+      :on-action="undoDelete"
+      :duration="5000"
+      position="bottom-center"
+      :is-dark-mode="isDarkMode"
+      @closed="confirmDelete"
+    />
   </div>
 </template>
 
@@ -99,6 +110,7 @@ import InboxSidebar from './InboxSidebar.vue';
 import InboxComments from './InboxComments.vue';
 import InboxControlsBar from './InboxControlsBar.vue';
 import InboxFAB from './InboxFAB.vue';
+import Toast from './Toast.vue';
 import styles from './InboxView.module.css'; // 确保导入 CSS 模块
 
 export default {
@@ -110,6 +122,7 @@ export default {
     InboxComments,
     InboxControlsBar,
     InboxFAB,
+    Toast,
   },
   filters: {
     formatDate(dateStr) {
@@ -152,6 +165,9 @@ export default {
       isDisconnected: false, // 新增：用于追踪网络断开状态
       selectedTags: [], // 用于多选标签
       currentSearchTerm: '', // <-- 添加搜索词状态
+      deletedNote: null, // 待撤销删除的笔记（乐观删除）
+      showUndoToast: false, // 撤销删除浮条显示状态
+      undoTimeout: null, // 撤销浮条定时器
     };
   },
   computed: {
@@ -285,23 +301,69 @@ export default {
   beforeUnmount() {
     // 移除全局事件监听器
     window.removeEventListener('keydown', this.handleGlobalSearchHotkey);
+    // 清理撤销删除定时器，防止内存泄漏
+    if (this.undoTimeout) {
+      clearTimeout(this.undoTimeout);
+      this.undoTimeout = null;
+    }
   },
   methods: {
-    async handleDeleteNote(noteId) {
-      console.log('准备删除笔记:', noteId);
+    async handleDeleteNote(note) {
+      if (!note || !note.id) {
+        console.warn('准备删除笔记: 无效的笔记对象', note);
+        return;
+      }
+      console.log('准备删除笔记:', note.id);
+      // 乐观删除：先本地移除，立即给用户反馈
+      this.deletedNote = { ...note };
+      this.notes = this.notes.filter(n => n.id !== note.id);
       try {
-        const success = await flomoApi.deleteNote(noteId);
+        const success = await flomoApi.deleteNote(note.id);
         if (success) {
-          console.log('笔记删除成功');
-          // 从本地笔记列表中移除已删除的笔记
-          this.notes = this.notes.filter(note => note.id !== noteId);
-          // 考虑到评论可能是笔记的关系，最好也刷新整个笔记列表
-          this.loadNotes(true);
+          console.log('笔记删除成功，显示撤销浮条');
+          // 显示撤销浮条，5 秒后自动确认删除
+          this.showUndoToast = true;
+          if (this.undoTimeout) {
+            clearTimeout(this.undoTimeout);
+          }
+          this.undoTimeout = setTimeout(() => {
+            this.confirmDelete();
+          }, 5000);
         } else {
-          console.warn('笔记删除失败: 未找到该笔记');
+          console.warn('笔记删除失败: 未找到该笔记，回滚本地列表');
+          this.rollbackDeletedNote();
         }
       } catch (error) {
-        console.error('删除笔记时出错:', error);
+        console.error('删除笔记时出错，回滚本地列表:', error);
+        this.rollbackDeletedNote();
+      }
+    },
+    rollbackDeletedNote() {
+      if (this.deletedNote) {
+        this.notes.unshift(this.deletedNote);
+        this.deletedNote = null;
+      }
+    },
+    undoDelete() {
+      console.log('撤销删除笔记:', this.deletedNote && this.deletedNote.id);
+      if (this.deletedNote) {
+        this.notes.unshift(this.deletedNote);
+        this.deletedNote = null;
+      }
+      if (this.undoTimeout) {
+        clearTimeout(this.undoTimeout);
+        this.undoTimeout = null;
+      }
+      this.showUndoToast = false;
+    },
+    confirmDelete() {
+      // API 已删除成功，这里仅清理状态
+      console.log('确认删除笔记:', this.deletedNote && this.deletedNote.id);
+      this.deletedNote = null;
+      this.showUndoToast = false;
+      if (this.undoTimeout) {
+        clearTimeout(this.undoTimeout);
+        this.undoTimeout = null;
       }
     },
     toggleSidebar() {
@@ -568,6 +630,17 @@ export default {
       this.suggestionIndex = -1;
       this.highlightedContent = '';
       console.log('编辑/新建已取消');
+    },
+    saveDraft() {
+      console.log('保存草稿。当前内容:', this.editContent);
+      // 失焦/点击外部时保存当前内容到草稿缓存（不区分新建或编辑现有笔记）
+      this.cachedDraftContent = this.editContent;
+      this.showInput = false;
+      this.editingNote = null;
+      this.suggestions = [];
+      this.suggestionIndex = -1;
+      this.highlightedContent = '';
+      console.log('草稿已保存，下次打开将恢复');
     },
     highlightText() {
       if (!this.$refs.noteInput) return;

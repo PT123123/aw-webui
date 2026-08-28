@@ -1,7 +1,6 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'http://localhost:5600',
   timeout: 5000
 })
 
@@ -69,23 +68,16 @@ export default {
   },
   async deleteNote(noteId) {
     try {
-      const response = await fetch(`/inbox/notes/${noteId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        console.log(`Note with id ${noteId} deleted successfully.`);
-        return true; // 返回成功状态
-      } else if (response.status === 404) {
-        console.error(`Note with id ${noteId} not found.`);
-        return false; // 返回失败状态
-      } else {
-        console.error('Failed to delete note:', response.status);
-        return false; // 返回失败状态
-      }
+      const response = await api.delete(`/inbox/notes/${noteId}`);
+      console.log(`Note with id ${noteId} deleted successfully.`);
+      return true;
     } catch (error) {
-      console.error('Error deleting note:', error);
-      return false; // 发生异常时返回失败状态
+      if (error.response?.status === 404) {
+        console.error(`Note with id ${noteId} not found.`);
+        return false;
+      }
+      console.error('Failed to delete note:', error);
+      return false;
     }
   },
 

@@ -227,6 +227,9 @@ export default {
 }
 :deep(.tag-highlight) {}
 :deep(.ProseMirror) {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 16px;
   min-height: 100px;
   padding: 8px;
   border: 1px solid #ccc;

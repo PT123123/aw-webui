@@ -28,10 +28,19 @@ body {
 
 .aw-container {
   background-color: #fff;
-  border: 1px solid $lightBorderColor;
+  border: none;
   border-radius: 5px;
   width: 100% !important; /* 使用 !important 确保覆盖原有样式 */
   margin-left: 0 !important;
   margin-right: 0 !important;
   padding-left: 0 !important;
+}
+
+/* 去掉最外层 #app / body 的全局 .dark-mode 边框（保留搜索框/下拉/按钮/卡片等的边框） */
+#app.dark-mode {
+  border: none !important;
+}
+
+body.dark-mode {
+  border: none !important;
 }

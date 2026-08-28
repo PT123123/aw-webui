@@ -113,70 +113,48 @@ export default {
 
 <style scoped>
 .sort-toggle-btn {
-  padding: 8px 15px;
-  background-color: #333333; /* 深灰色背景 */
-  color: #ffffff; /* 白色文字 */
-  border: 1px solid #555555; /* 边框颜色调整 */
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s ease, border-color 0.3s ease;
   min-width: 120px;
   text-align: center;
 }
-
-.copy-btn {
-  padding: 8px 15px;
-  background-color: #1e88e5; /* 蓝色背景 */
-  color: #ffffff; /* 白色文字 */
-  border: 1px solid #0d47a1; /* 深蓝色边框 */
-  border-radius: 4px;
+.copy-btn, .sort-toggle-btn {
+  padding: 6px 14px;
+  background-color: #fff;
+  color: #555;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+.copy-btn {
   margin-right: 10px;
-  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
-
-.copy-btn:hover {
-  background-color: #1976d2; /* 悬停时稍深的蓝色 */
-  border-color: #0d47a1;
+.copy-btn:hover, .sort-toggle-btn:hover {
+  background-color: #f5f4f0;
 }
-
 .copy-btn.dark-mode {
-  background-color: #2979ff; /* 暗黑模式下的蓝色 */
-  color: #f0f0f0;
-  border: 1px solid #1565c0;
+  background-color: #2a2a3e;
+  color: #b0b0b0;
+  border-color: #3a3a50;
 }
-
 .copy-btn.dark-mode:hover {
-  background-color: #2962ff; /* 暗黑模式悬停颜色 */
-  border-color: #0d47a1;
+  background-color: #353550;
 }
-
 .sort-toggle-btn:hover {
-  background-color: #444444; /* 悬停时稍亮一些的深灰色 */
-  border-color: #666666;
+  background-color: #f5f4f0;
 }
-
 .sort-toggle-btn:active {
-  background-color: #222222; /* 点击时更深的灰色 */
-  border-color: #444444;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+  background-color: #eee9e2;
 }
-
-/* 深色模式样式 */
 :global(.dark-mode) .sort-toggle-btn {
-  background-color: #282a36; /* 暗黑模式下的背景色，可以根据您的主题调整 */
-  color: #f0f0f0;
-  border: 1px solid #44475a;
+  background-color: #2a2a3e;
+  color: #b0b0b0;
+  border: 1px solid #3a3a50;
 }
-
 :global(.dark-mode) .sort-toggle-btn:hover {
-  background-color: #3a3c4a; /* 暗黑模式悬停颜色 */
-  border-color: #505362;
+  background-color: #353550;
 }
 
-/* Search specific styles */
 .search-container {
   display: flex;
   align-items: center;
@@ -189,74 +167,78 @@ export default {
 }
 
 .search-input {
-  padding: 8px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 6px 10px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
   margin-right: 5px;
-  font-size: 14px;
+  font-size: 13px;
   width: 200px;
   transition: width 0.3s ease;
+  background-color: #fff;
+  color: #333;
 }
 
 .search-input.dark-mode {
-  background-color: #282a36;
-  color: #f0f0f0;
-  border-color: #44475a;
+  background-color: #2a2a3e;
+  color: #e0e0e0;
+  border-color: #3a3a50;
 }
 
 .search-button, .search-icon-button, .cancel-button {
-  padding: 8px 10px;
-  border: none;
-  border-radius: 4px;
+  padding: 6px 10px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   margin-right: 5px;
+  transition: all 0.2s ease;
 }
 
 .search-button, .search-icon-button {
-  background-color: #4CAF50;
-  color: white;
+  background-color: #fff;
+  color: #555;
 }
 
 .cancel-button {
-  background-color: #f44336;
-  color: white;
+  background-color: #fff;
+  color: #999;
 }
 
 .search-button.dark-mode, .search-icon-button.dark-mode {
-  background-color: #388e3c;
+  background-color: #2a2a3e;
+  color: #b0b0b0;
+  border-color: #3a3a50;
 }
 
 .cancel-button.dark-mode {
-  background-color: #d32f2f;
+  background-color: #2a2a3e;
+  color: #888;
+  border-color: #3a3a50;
 }
 
 .search-button:hover, .search-icon-button:hover {
-  background-color: #45a049;
+  background-color: #f5f4f0;
 }
 
 .cancel-button:hover {
-  background-color: #e53935;
+  background-color: #f5f4f0;
 }
 
 .search-button.dark-mode:hover, .search-icon-button.dark-mode:hover {
-  background-color: #2e7d32;
+  background-color: #353550;
 }
 
 .cancel-button.dark-mode:hover {
-  background-color: #c62828;
+  background-color: #353550;
 }
 
-/* 响应式调整 */
 @media (max-width: 480px) {
-  .sort-toggle-btn,
-  .copy-btn {
+  .copy-btn, .sort-toggle-btn {
     min-width: auto;
     padding: 6px 10px;
     font-size: 13px;
   }
   
-  /* 在小屏幕上只显示图标，隐藏文字 */
   .sort-toggle-btn {
     font-size: 0;
   }
@@ -275,14 +257,13 @@ export default {
     font-size: 16px;
   }
   
-  /* Adjust search for small screens */
   .search-container {
-    margin-left: 5px; /* Reduce margin */
+    margin-left: 5px;
   }
   .search-input {
     padding: 6px 8px;
     font-size: 13px;
-    max-width: 100px; /* Limit width to prevent overflow */
+    max-width: 100px;
   }
   .search-button {
     padding: 6px 8px;

@@ -46,7 +46,7 @@
                   <span class="menu-text">评论</span>
                 </li>
                 <li class="menu-divider"></li>
-                <li @click.stop="handleDelete(note.id)" class="menu-item delete-item">
+                <li @click.stop="handleDelete(note)" class="menu-item delete-item">
                   <span class="menu-icon">🗑️</span>
                   <span class="menu-text">删除</span>
                 </li>
@@ -235,9 +235,10 @@ export default {
       console.log('[NoteList] Toggling menu for note:', noteId);
       this.openMenuId = this.openMenuId === noteId ? null : noteId;
     },
-    handleDelete(noteId) {
-      console.log('[NoteList] Requesting delete for note:', noteId);
-      this.$emit('delete-note', noteId);
+    handleDelete(note) {
+      if (!note) return;
+      console.log('[NoteList] Requesting delete for note:', note.id);
+      this.$emit('delete-note', note);
       this.openMenuId = null;
     },
     handleComment(note) {
@@ -279,29 +280,25 @@ export default {
 </script>
 
 <style scoped>
-/* 样式部分保持不变 */
 .note-list {
-  margin: 20px 0;
-  background-color: #000000;
-  --note-text-color: #222;
+  margin: 0;
+  background-color: transparent;
+  border: none;
+  --note-text-color: #333;
 }
 .note-list.dark-mode {
-  background-color: #000000;
-  --note-text-color: #eee;
-}
-.note-list.dark-mode {
-  background-color: #000000;
+  background-color: transparent;
+  --note-text-color: #e0e0e0;
 }
 .note-list.dark-mode > p {
-  color: #ccc;
+  color: #888;
 }
 .note-list > p {
-  color: #777;
+  color: #999;
   text-align: center;
   padding: 20px;
 }
 
-/* 移除ul的默认样式 */
 .note-list ul {
   list-style-type: none;
   margin: 0;
@@ -310,49 +307,48 @@ export default {
 }
 
 .note-item {
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
+  background: #faf9f5;
+  border: 1px solid #e8e6e1;
   border-radius: 8px;
-  margin-bottom: 15px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  transition: box-shadow 0.2s ease;
+  margin-bottom: 12px;
+  padding: 16px;
+  box-shadow: none;
+  transition: none;
   overflow: visible !important;
   position: relative;
 }
 .note-item.dark-mode {
-  background: #000000;
-  border-color: #333;
-  color: #f5f5f5;
+  background: #1a1a2e;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #e0e0e0;
 }
 .note-item:hover {
-  box-shadow: 0 3px 7px rgba(0,0,0,0.1);
+  box-shadow: none;
 }
 
 .note-content {
-  padding: 15px;
+  padding: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.note-content.dark-mode {
+  flex-direction: column;
+  gap: 10px;
+  background: transparent;
+  border: none;
 }
 
 .content-text {
   flex-grow: 1;
   white-space: pre-wrap;
   word-break: break-word;
-  margin-right: 10px;
   color: var(--note-text-color);
-  font-family: monospace;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .content-tag {
-  color: #6200ee; /* 紫色标签文本 */
-  background-color: rgba(98, 0, 238, 0.1); /* 轻微的紫色背景 */
+  color: #5b6abf;
+  background: none;
   border-radius: 3px;
-  padding: 1px 3px;
+  padding: 0;
   margin: 0 1px;
   display: inline;
   vertical-align: baseline;
@@ -362,11 +358,11 @@ export default {
   border: none;
   box-shadow: none;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: color 0.15s ease;
 }
 
 .content-tag:hover {
-  background-color: rgba(98, 0, 238, 0.2);
+  color: #4a59ae;
 }
 
 .highlight-layer span {
@@ -378,17 +374,15 @@ export default {
 }
 
 .note-content-common {
-  font-family: monospace;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .highlight-layer {
   white-space: pre-wrap;
   word-break: break-all;
-  font-family: monospace;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.6;
   margin: 0;
   padding: 0;
   border: none;
@@ -396,7 +390,9 @@ export default {
 }
 
 .note-actions {
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .dropdown {
@@ -407,27 +403,28 @@ export default {
 .dropdown-toggle {
   background: none;
   border: none;
-  padding: 5px 8px;
+  padding: 4px 8px;
   cursor: pointer;
   outline: none;
-  border-radius: 3px;
-  transition: background-color 0.2s ease;
-  width: 30px;
-  height: 30px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   z-index: 5;
+  color: #999;
 }
 .dropdown-toggle:hover {
-  background-color: rgba(0,0,0,0.05);
+  background-color: #f0efe9;
 }
 .dropdown-toggle.dark-mode {
-  color: #f5f5f5;
+  color: #777;
 }
 .dropdown-toggle.dark-mode:hover {
-  background-color: rgba(255,255,255,0.1);
+  background-color: #2a2a3e;
 }
 
 .menu-dots-container {
@@ -442,7 +439,7 @@ export default {
 .dropdown-toggle .menu-dots {
   width: 4px;
   height: 4px;
-  background-color: #555;
+  background-color: #999;
   border-radius: 50%;
   position: relative;
 }
@@ -453,7 +450,7 @@ export default {
   position: absolute;
   width: 4px;
   height: 4px;
-  background-color: #555;
+  background-color: #999;
   border-radius: 50%;
 }
 
@@ -470,10 +467,9 @@ export default {
 .dropdown-toggle.dark-mode .menu-dots,
 .dropdown-toggle.dark-mode .menu-dots::before,
 .dropdown-toggle.dark-mode .menu-dots::after {
-  background-color: #f5f5f5;
+  background-color: #777;
 }
 
-/* 移除菜单按钮上的::after和::before伪元素 (三角形图标) */
 .dropdown-toggle::after,
 .dropdown-toggle:after,
 .dropdown-toggle.dark-mode::after,
@@ -491,45 +487,45 @@ button.dropdown-toggle:after,
 }
 
 .dropdown-menu {
-  display: block !important; /* 或者 inline-block */
+  display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
   position: absolute;
   top: 100%;
   right: 0;
-  background-color: #f9f9f9;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  padding: 5px 0;
-  min-width: 120px; /* 增加宽度以容纳图标 */
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  background-color: #fff;
+  border: 1px solid #e8e6e1;
+  border-radius: 8px;
+  padding: 4px 0;
+  min-width: 100px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   z-index: 1200;
-  list-style-type: none; /* 确保没有列表项符号 */
+  list-style-type: none;
   margin: 0;
-  padding: 0;
 }
 .dropdown-menu.dark-mode {
-  background-color: #333;
-  border-color: #555;
+  background-color: #2a2a3e;
+  border-color: #3a3a50;
 }
 
 .dropdown-menu li.menu-item {
   padding: 8px 15px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
-  color: #333;
+  transition: background-color 0.15s ease;
+  color: #555;
   display: flex;
   align-items: center;
+  font-size: 14px;
 }
 .dropdown-menu.dark-mode li.menu-item {
-  color: #f5f5f5;
+  color: #ccc;
 }
 
 .dropdown-menu li.menu-item:hover {
-  background-color: #eee;
+  background-color: #f5f4f0;
 }
 .dropdown-menu.dark-mode li.menu-item:hover {
-  background-color: #555;
+  background-color: #353550;
 }
 
 .dropdown-menu .menu-icon {
@@ -543,12 +539,12 @@ button.dropdown-toggle:after,
 
 .dropdown-menu .menu-divider {
   height: 1px;
-  background-color: #e0e0e0;
-  margin: 5px 0;
+  background-color: #eee9e2;
+  margin: 4px 0;
 }
 
 .dropdown-menu.dark-mode .menu-divider {
-  background-color: #555;
+  background-color: #3a3a50;
 }
 
 .dropdown-menu .delete-item {
@@ -561,82 +557,83 @@ button.dropdown-toggle:after,
 
 .comment-btn {
   background: none;
-  border: 1px solid #007bff;
-  color: #007bff;
-  padding: 8px 12px;
+  border: none;
+  color: #999;
+  padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.9em;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  font-size: 13px;
+  transition: color 0.15s ease;
   outline: none;
-  margin-left: 5px;
 }
 .comment-btn.dark-mode {
-  border-color: #6200ee;
-  color: #6200ee;
-}
-
-.comment-btn:hover {
-  background-color: #007bff;
-  color: white;
-}
-.comment-btn.dark-mode:hover {
-  background-color: #6200ee;
-  color: white;
-}
-
-.note-meta {
-  padding: 10px 15px;
-  background-color: #f5f5f5;
-  border-top: 1px solid #e0e0e0;
-  border-radius: 0 0 8px 8px;
-  font-size: 0.85em;
-  color: var(--note-text-color);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-}
-.note-meta span {
-  color: var(--note-text-color);
-}
-.note-meta .date-info {
-  font-size: 0.8em;
-  color: #999;
-  font-weight: normal;
-}
-.note-meta.dark-mode {
-  background-color: #222;
-  border-top-color: #333;
-}
-.note-meta.dark-mode .date-info {
   color: #777;
 }
 
+.comment-btn:hover {
+  color: #5b6abf;
+}
+.comment-btn.dark-mode:hover {
+  color: #7c8cff;
+}
+
+.note-meta {
+  padding: 8px 0 0 0;
+  background-color: transparent;
+  border: none;
+  font-size: 12px;
+  color: #999;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.note-meta span {
+  color: #999;
+}
+.note-meta .date-info {
+  font-size: 12px;
+  color: #bbb;
+  font-weight: normal;
+}
+.note-meta.dark-mode {
+  background-color: transparent;
+  border: none;
+}
+.note-meta.dark-mode span {
+  color: #777;
+}
+.note-meta.dark-mode .date-info {
+  color: #666;
+}
+
 .note-tags {
-  margin-left: auto;
+  margin-left: 0;
+  display: flex;
+  gap: 6px;
+  align-items: center;
 }
 
 .tag {
-  background-color: #e7f2ff;
-  color: #007bff;
-  padding: 3px 6px;
-  border-radius: 4px;
-  margin-left: 5px;
-  font-size: 0.8em;
+  background: none;
+  color: #5b6abf;
+  padding: 0;
+  border-radius: 0;
+  margin-left: 0;
+  font-size: 12px;
 }
 .tag.dark-mode {
-  background-color: #37474f;
-  color: #64b5f6;
+  background: none;
+  color: #7c8cff;
 }
 
 .note-list.dark-mode .content-tag {
-  color: #bb86fc; /* 暗色模式下更亮的紫色 */
-  background-color: rgba(187, 134, 252, 0.2); /* 暗色模式下的背景 */
+  color: #7c8cff;
+  background: none;
 }
 
 .note-list.dark-mode .content-tag:hover {
-  background-color: rgba(187, 134, 252, 0.3);
+  color: #9dadff;
 }
 </style>
 

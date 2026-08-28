@@ -341,8 +341,8 @@ export default {
   margin-top: 20px;
 }
 .note-item {
-  border: 1px solid #e0e0e0;
-  background-color: #f9f9f9;
+  border: none;
+  background-color: #faf9f5;
   padding: 15px 20px;
   margin-bottom: 12px;
   border-radius: 6px;
@@ -398,8 +398,8 @@ export default {
 
 /* Dark Mode Styles (optional, based on isDarkMode prop if NoteEditor uses it) */
 .inbox-view-container.dark-mode .note-item {
-    background-color: #3a3a3a;
-    border-color: #555;
+    background-color: #1a1a2e;
+    border: none;
 }
 .inbox-view-container.dark-mode .note-item h4 {
     color: #e0e0e0;

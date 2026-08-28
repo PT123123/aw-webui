@@ -50,6 +50,11 @@ div(:class="{'fixed-top-padding': fixedTopMenu}")
             icon(name="database")
             | Inbox
 
+        b-nav-item(to="/sync")
+          div.px-2.px-lg-1
+            icon(name="sync")
+            | 局域网同步
+
       // Brand on large screens (centered)
       b-navbar-nav.abs-center.d-none.d-lg-block
         b-navbar-brand(to="/" style="background-color: transparent;")
@@ -143,6 +148,7 @@ import 'vue-awesome/icons/stopwatch';
 import 'vue-awesome/icons/cog';
 import 'vue-awesome/icons/tools';
 import 'vue-awesome/icons/history';
+import 'vue-awesome/icons/sync';
 
 // TODO: use circle-nodes instead in the future
 import 'vue-awesome/icons/project-diagram';

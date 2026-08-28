@@ -61,6 +61,10 @@ export default {
         //style.innerHTML = darkCssContent;
         //theme === 'dark' ? document.querySelector('head').appendChild(style) : '';
       }
+    } else {
+      // If theme is light/auto-light, remove any existing dark.css links (including the one from index.html media query)
+      const darkLinks = document.querySelectorAll('link[href$="dark.css"]');
+      darkLinks.forEach(link => link.remove());
     }
     this.loaded = true;
   },

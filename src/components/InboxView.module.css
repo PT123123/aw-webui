@@ -3,18 +3,19 @@
   display: flex; /* 使用 Flexbox 布局 */
   min-height: 100vh;
   padding-top: 0; /* 移除顶部内边距 */
-  background-color: #f0f2f5; /* Light background by default */
+  background-color: #faf9f5; /* Light background by default */
   color: #333; /* Dark text by default */
   transition: background-color 0.3s ease, color 0.3s ease;
   width: 100%; /* 添加这一行，设置宽度为 100% */
   position: relative; /* 添加相对定位，作为筛选栏的定位参考 */
 }
 
-.app-container-modified.dark-mode {
-  background-color: #1e1e1e; /* Dark background */
-  color: #f8f8f2; /* Light text */
-  width: 100%; /* 确保黑暗模式下也占据 100% 宽度 */
-}
+  .app-container-modified.dark-mode {
+    background-color: #1a1a2e; /* Dark background */
+    color: #e0e0e0; /* Light text */
+    width: 100%; /* 确保黑暗模式下也占据 100% 宽度 */
+    border: none;
+  }
   
   /* Sidebar Toggle Button */
   .sidebar-toggle {
@@ -23,22 +24,22 @@
     top: 50%;
     transform: translateY(-50%);
     z-index: 9999; /* 提高z-index确保在其他元素之上 */
-    width: 30px;
-    height: 50px;
-    background: #4CAF50;
-    border-radius: 0 8px 8px 0;
+    width: 28px;
+    height: 48px;
+    background: #5b6abf;
+    border-radius: 0 6px 6px 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    box-shadow: 1px 0 4px rgba(0,0,0,0.1);
     opacity: 1; /* 确保可见 */
     visibility: visible; /* 确保可见 */
   }
   .app-container-modified.dark-mode .sidebar-toggle {
-    background: #333; /* Dark background for toggle in dark mode */
-    box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+    background: #2a2a40;
+    box-shadow: 1px 0 4px rgba(0,0,0,0.3);
   }
   
   .sidebar-toggle .icon {
@@ -55,14 +56,14 @@
   .filter-sidebar {
     width: 240px;
     height: 100vh;
-    background: #f8f9fa;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    background: #f5f4f0;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.06);
     transition: transform 0.3s ease, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
     transform: translateX(-240px); /* 默认隐藏 */
     z-index: 9000; /* 低于切换按钮，但高于大多数元素 */
     display: flex;
     flex-direction: column;
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid #e8e6e1;
     position: fixed; /* 使用固定定位 */
     top: 0;
     left: 0;
@@ -79,9 +80,9 @@
   }
   
   .filter-sidebar.dark-mode {
-    background-color: #282a36; /* Dark background */
-    color: #f8f8f2; /* Light text */
-    border-right-color: #44475a;
+    background-color: #16162a; /* Dark background */
+    color: #e0e0e0; /* Light text */
+    border-right-color: #2a2a40;
   }
   
   .filter-sidebar.sidebar-open {
@@ -103,12 +104,12 @@
     align-items: center;
     margin-bottom: 15px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e8e6e1;
     transition: border-color 0.3s ease, color 0.3s ease;
   }
   
   .sidebar-header.dark-mode {
-    border-bottom-color: #44475a;
+    border-bottom-color: #2a2a40;
   }
   
   .sidebar-header h3 {
@@ -196,41 +197,41 @@
   .tag-list li {
     padding: 8px 10px;
     margin-bottom: 5px;
-    border-radius: 4px;
-    background-color: #f0f0f0;
-    color: #333;
+    border-radius: 6px;
+    background-color: #eee9e2;
+    color: #555;
     cursor: pointer;
     font-size: 0.9em;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
   
   .tag-list.dark-mode li {
-    background-color: #44475a;
-    color: #f8f8f2;
+    background-color: #2a2a40;
+    color: #b0b0b0;
   }
   
   .tag-list li:hover {
-    background-color: #e0e0e0;
+    background-color: #e0dbd4;
   }
   
   .tag-list.dark-mode li:hover {
-    background-color: #6272a4;
+    background-color: #353550;
   }
   
   .tag-list li.active {
-    background-color: #007bff;
+    background-color: #5b6abf;
     color: white;
   }
   
   .tag-list.dark-mode li.active {
-    background-color: #bd93f9;
-    color: #282a36;
+    background-color: #7c8cff;
+    color: #1a1a2e;
   }
   
   .clear-filter-btn {
     background: none;
     border: none;
-    color: #007bff;
+    color: #5b6abf;
     cursor: pointer;
     padding: 5px 0;
     font-size: 0.9em;
@@ -240,7 +241,7 @@
   }
   
   .clear-filter-btn.dark-mode {
-    color: #bd93f9;
+    color: #7c8cff;
   }
   
   .clear-filter-btn:hover {
@@ -252,14 +253,15 @@
     flex-grow: 1; /* 占据剩余空间 */
     transition: margin-left 0.3s ease, background-color 0.3s ease, color 0.3s ease;
     margin-left: 0; /* 默认没有左边距 */
-    padding: 20px; /* Add padding */
-    background-color: #fff; /* Light background by default */
+    padding: 0; /* Remove padding */
+    background-color: #faf9f5; /* Light background by default */
     color: #333; /* Dark text by default */
   }
   
   .main-content.dark-mode {
-    background-color: #1e1e1e; /* Dark background */
-    color: #f8f8f2; /* Light text */
+    background-color: #1a1a2e; /* Dark background */
+    color: #e0e0e0; /* Light text */
+    border: none;
   }
   
   /* Adjust main content margin when sidebar is open */
@@ -282,21 +284,20 @@
   
   .controls button {
     margin-right: 10px;
-    padding: 8px 16px;
-    font-size: 14px;
+    padding: 6px 14px;
+    font-size: 13px;
     transition: all 0.3s, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-    border: 1px solid #ccc;
+    border: 1px solid #d0d0d0;
     background-color: #fff;
-    color: #333;
-    border-radius: 4px;
+    color: #555;
+    border-radius: 6px;
     cursor: pointer;
   }
   
-  /* 更明确地设置按钮的黑暗模式样式 */
   .main-content.dark-mode .controls button {
-    background-color: #44475a;
-    color: #f8f8f2;
-    border-color: #6272a4;
+    background-color: #2a2a3e;
+    color: #b0b0b0;
+    border-color: #3a3a50;
   }
   
   .controls button:last-child {
@@ -304,48 +305,49 @@
   }
   
   .controls button:hover {
-    background-color: #f1f1f1;
+    background-color: #f5f4f0;
   }
   
   .main-content.dark-mode .controls button:hover {
-    background-color: #6272a4;
+    background-color: #353550;
   }
   
   .controls button.active {
-    background: #007bff;
+    background: #5b6abf;
     color: white;
-    border-color: #007bff;
+    border-color: #5b6abf;
   }
   
   .main-content.dark-mode .controls button.active {
-    background: #bd93f9;
-    color: #282a36;
-    border-color: #bd93f9;
+    background: #7c8cff;
+    color: #1a1a2e;
+    border-color: #7c8cff;
   }
   
   /* Refresh Button Style */
   .refresh-btn {
-    padding: 8px 16px;
-    background: #6c757d;
-    color: white;
-    border: none;
-    border-radius: 4px;
+    padding: 6px 14px;
+    background: transparent;
+    color: #555;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     transition: background-color 0.2s ease, color 0.3s ease;
   }
   
   .main-content.dark-mode .refresh-btn {
-    background: #5a6268;
-    color: #f8f8f2;
+    background: transparent;
+    color: #b0b0b0;
+    border-color: #3a3a50;
   }
   
   .refresh-btn:hover {
-    background: #5a6268;
+    background: #f5f4f0;
   }
   
   .main-content.dark-mode .refresh-btn:hover {
-    background: #6272a4;
+    background: #353550;
   }
   
   /* Floating Action Button */
@@ -353,9 +355,9 @@
     position: fixed;
     bottom: 30px;
     right: 30px;
-    width: 56px;
-    height: 56px;
-    background: #4CAF50;
+    width: 52px;
+    height: 52px;
+    background: #5b6abf;
     color: white;
     border-radius: 50%;
     display: flex;
@@ -363,24 +365,24 @@
     justify-content: center;
     font-size: 24px;
     cursor: pointer;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     z-index: 990;
     transition: all 0.3s ease, background-color 0.3s ease, color 0.3s ease;
   }
   
   .floating-action.dark-mode {
-    background: #bd93f9;
-    color: #282a36;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+    background: #7c8cff;
+    color: #1a1a2e;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
   
   .floating-action:hover {
     transform: scale(1.05);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   }
   
   .floating-action.dark-mode:hover {
-    box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
   }
   
   /* Load More Trigger Style (make it invisible but occupy space) */
@@ -392,74 +394,74 @@
   
   /* 添加以下样式规则 */
   .content-tag {
-  background: none;
-  display: inline;
-  vertical-align: baseline;
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  padding: 0;
-  margin: 0;
-  border: none;
-  box-shadow: none;
-  cursor: pointer;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-.highlight-layer span {
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  display: inline;
-  vertical-align: baseline;
-}
-
-.note-content-common {
-  font-family: monospace;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.highlight-layer {
-  white-space: normal;
-  word-break: break-all;
-  font-family: monospace;
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: none;
-}
+    color: #5b6abf;
+    background: none;
+    border-radius: 3px;
+    padding: 0;
+    margin: 0 1px;
+    display: inline;
+    vertical-align: baseline;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    border: none;
+    box-shadow: none;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+  
+  .highlight-layer span {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    display: inline;
+    vertical-align: baseline;
+  }
+  
+  .note-content-common {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  
+  .highlight-layer {
+    white-space: normal;
+    word-break: break-all;
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+  }
 
   
   .content-tag:hover {
-    background-color: #bbdefb;
+    color: #4a59ae;
   }
   
   .dark-mode .content-tag {
-    color: #8be9fd!important;
-    background-color: #283742;
+    color: #7c8cff !important;
+    background: none;
   }
   
   .dark-mode .content-tag:hover {
-    background-color: #435a70;
+    color: #9dadff;
   }
   
   /* Add styles for the comment section */
   .comments-section {
     margin-top: 20px;
     padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: #f9f9f9;
+    border: 1px solid #e8e6e1;
+    border-radius: 8px;
+    background-color: transparent;
     color: #333;
   }
   
   .dark-mode .comments-section {
-    border-color: #444;
-    background-color: #222;
-    color: #eee;
+    border-color: #2a2a40;
+    background-color: transparent;
+    color: #e0e0e0;
   }
   
   .comments-section h4 {
@@ -475,11 +477,11 @@
   
   .comments-section li {
     padding: 8px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #eee9e2;
   }
   
   .dark-mode .comments-section li {
-    border-bottom-color: #444;
+    border-bottom-color: #2a2a40;
   }
   
   .comments-section li:last-child {

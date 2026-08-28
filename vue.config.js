@@ -1,5 +1,6 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
+import CopyWebpackPlugin from 'copy-webpack-plugin';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,7 +20,12 @@ export default {
       },
       // 确保扩展名顺序以.js优先
       extensions: ['.js', '.vue', '.json']
-    }
+    },
+    plugins: [
+      new CopyWebpackPlugin([
+        { from: path.resolve(__dirname, 'static'), to: path.resolve(__dirname, 'dist') }
+      ])
+    ]
   },
   lintOnSave: process.env.NODE_ENV !== 'production',
   pluginOptions: {

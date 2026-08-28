@@ -14,7 +14,7 @@
                     />
             </div>
             <div class="modal-actions" :class="{ 'dark-mode': isDarkMode }">
-                    <button class="submit-btn" data-testid="note-editor-submit-button">发送</button>
+                    <button class="submit-btn" data-testid="note-editor-submit-button">➤</button>
                     <button class="cancel-btn" data-testid="note-editor-cancel-button">取消</button>
             </div>
         </div>
@@ -57,7 +57,7 @@ export default {
       required: true
     }
   },
-  emits: ['submit-note', 'input', 'cancel-edit', 'update:showInput'],
+  emits: ['submit-note', 'input', 'cancel-edit', 'save-draft', 'update:showInput'],
   data() {
     return {
       portalTarget: null,
@@ -68,6 +68,7 @@ export default {
       _portalSubmitHandler: null,
       _portalContentClickHandler: null, // Added for stopPropagation on content
       _documentClickHandler: null, // 新增：用于全局点击监听
+      _portalFocusoutHandler: null, // 新增：用于焦点移出检测（移动端收起输入法场景）
       internalEditorValue: '',
       isRichEditorReadyInPortal: false,
       // No need to store movableContent here if we always access via $refs.movableContent
@@ -210,32 +211,50 @@ export default {
       this.portalBackdrop.className = 'note-editor-portal-backdrop';
       this._portalBackdropClickHandler = (event) => {
         if (event.target === this.portalBackdrop) {
-          console.log('[editorcollapse] 检测到背景点击，准备关闭编辑器');
-          // 检查 prop 但不输出警告
-          const hasCancelProp = this.onCancelRequest && typeof this.onCancelRequest === 'function';
-          
-          if (hasCancelProp) {
-            console.log('[editorcollapse] 使用传入的onCancelRequest关闭编辑器');
-            this.onCancelRequest();
-          } else {
-            // 直接使用备用机制，不输出警告
-            console.log('[editorcollapse] 使用备用关闭机制');
-            this.$emit('cancel-edit');
-            
-            if (this.showInput) {
-              console.log('[editorcollapse] 内部关闭编辑器');
-              setTimeout(() => {
-                this.destroyEditorAndRemovePortal();
-                this.$emit('update:showInput', false);
-              }, 50);
-            }
+          console.log('[editorcollapse] 检测到背景点击，保存草稿并关闭编辑器');
+          this.$emit('save-draft');
+          if (this.showInput) {
+            console.log('[editorcollapse] 内部关闭编辑器（草稿已保存）');
+            setTimeout(() => {
+              this.destroyEditorAndRemovePortal();
+              this.$emit('update:showInput', false);
+            }, 50);
           }
         }
       };
       this.portalBackdrop.addEventListener('click', this._portalBackdropClickHandler);
       console.log('[editorcollapse] 已添加背景点击事件监听');
 
-      // 添加全局点击事件监听，处理编辑器外部的点击
+      // 添加 focusout 监听器到 portalWrapper
+      // 解决移动端 WebView 收起输入法时只触发 blur/focusout、不触发外部 click 的问题。
+      // 当编辑器内元素失焦时，判断焦点去向：若焦点移出 portal 内容区域，则保存草稿并关闭。
+      this._portalFocusoutHandler = (event) => {
+        if (!this.showInput) return;
+        const relatedTarget = event.relatedTarget;
+        const isInsidePortal = this.portalContent && this.portalContent.contains(relatedTarget);
+        console.group('[editorcollapse] 处理 focusout 事件');
+        console.log('[editorcollapse] relatedTarget:', relatedTarget);
+        console.log('[editorcollapse] 焦点是否在 portal 内:', isInsidePortal);
+        // 焦点移出了 portal 内容区域（含移动端收起输入法），保存草稿并关闭
+        if (!isInsidePortal) {
+          console.log('[editorcollapse] 焦点移出 portal，保存草稿并关闭编辑器');
+          this.$emit('save-draft');
+          if (this.showInput) {
+            console.log('[editorcollapse] 内部关闭编辑器（草稿已保存）');
+            setTimeout(() => {
+              this.destroyEditorAndRemovePortal();
+              this.$emit('update:showInput', false);
+            }, 50);
+          }
+        } else {
+          console.log('[editorcollapse] 焦点仍在 portal 内（如点击按钮），不关闭');
+        }
+        console.groupEnd();
+      };
+      this.portalWrapper.addEventListener('focusout', this._portalFocusoutHandler);
+      console.log('[editorcollapse] 已添加 focusout 事件监听');
+
+      // 添加全局点击事件监听，处理编辑器外部的点击（保存为草稿，而非取消）
       this._documentClickHandler = (event) => {
         // 如果编辑器未显示，不处理
         if (!this.showInput) return;
@@ -275,25 +294,16 @@ export default {
           return;
         }
         
-        // 此时点击确实在编辑器外部，关闭编辑器
-        console.log('[editorcollapse] 点击在编辑器区域外，准备关闭');
+        // 此时点击确实在编辑器外部，保存为草稿并关闭编辑器
+        console.log('[editorcollapse] 点击在编辑器区域外，保存草稿并关闭');
+        this.$emit('save-draft');
         
-        // 检查是否有取消回调
-        const hasCancelProp = this.onCancelRequest && typeof this.onCancelRequest === 'function';
-        if (hasCancelProp) {
-          console.log('[editorcollapse] 使用传入的onCancelRequest关闭编辑器');
-          this.onCancelRequest();
-        } else {
-          console.log('[editorcollapse] 使用备用关闭机制');
-          this.$emit('cancel-edit');
-          
-          if (this.showInput) {
-            console.log('[editorcollapse] 内部关闭编辑器');
-            setTimeout(() => {
-              this.destroyEditorAndRemovePortal();
-              this.$emit('update:showInput', false);
-            }, 50);
-          }
+        if (this.showInput) {
+          console.log('[editorcollapse] 内部关闭编辑器（草稿已保存）');
+          setTimeout(() => {
+            this.destroyEditorAndRemovePortal();
+            this.$emit('update:showInput', false);
+          }, 50);
         }
         
         console.groupEnd();
@@ -449,6 +459,13 @@ export default {
         console.log('[editorcollapse] 已移除全局点击事件监听');
       }
       
+      // 移除 focusout 监听器
+      if (this.portalWrapper && this._portalFocusoutHandler) {
+        this.portalWrapper.removeEventListener('focusout', this._portalFocusoutHandler);
+        this._portalFocusoutHandler = null;
+        console.log('[editorcollapse] 已移除 focusout 事件监听');
+      }
+      
       // 移除内容点击监听器
       if (this.portalContent) {
           const actualModalDialog = this.portalContent.querySelector('.modal-content'); 
@@ -514,7 +531,7 @@ export default {
     display: flex; /* or block, depending on how .modal-content inside it should behave */
     justify-content: center; /* Example for centering if it directly holds .modal-content */
     align-items: flex-end; /* 修改：从 center 改为 flex-end，确保内容靠底部对齐 */
-    width: 100%; /* Or specific dimensions if it's not just a pass-through container */
+    width: 100vw; /* Or specific dimensions if it's not just a pass-through container */
     height: 100%;
 }
 
@@ -556,8 +573,8 @@ export default {
    z-index: 2; /* Above backdrop */
    background-color: #fefefe;
    color: #121212;
-   width: 100%; /* 100%宽度，占满屏幕宽度 */
-   max-width: 100%; /* 不限制最大宽度 */
+   width: 100vw; /* 100%宽度，占满屏幕宽度 */
+   max-width: 600px; /* 桌面端限制最大宽度，居中显示 */
    min-height: 200px; /* 减小最小高度 */
    max-height: 40vh; /* 限制最大高度为视口的40% */
    border-radius: 12px 12px 0 0; /* 只保留顶部圆角 */
@@ -574,6 +591,17 @@ export default {
    transform: translateY(0); /* 确保没有任何变换影响位置 */
 }
 
+@media (max-width: 640px) {
+  .modal-content {
+    max-width: 100vw;
+    padding: 14px 12px;
+  }
+  .editor-wrapper {
+    padding: 10px;
+    min-height: 110px;
+  }
+}
+
 .modal-content.dark-mode {
   background-color: #2d2d2d; /* Darker modal background */
   color: #e0e0e0; /* Lighter text for dark mode */
@@ -582,6 +610,7 @@ export default {
 
 .editor-wrapper {
   flex: 1;
+  width: 100%;
   position: relative;
   margin-bottom: 20px; /* Increased spacing */
   background-color: #fff;
@@ -603,7 +632,9 @@ export default {
 
 /* Styles for RichTextEditorCore's .tiptap element */
 .tiptap-editor { /* This class is typically on the RichTextEditorCore's root or Tiptap's main div */
-  flex-grow: 1; /* Allow it to take available space in editor-wrapper */
+  flex-grow: 1;
+  width: 100%;
+  box-sizing: border-box; /* Allow it to take available space in editor-wrapper */
   outline: none;
   font-size: 1rem; /* Base font size */
   line-height: 1.6;
@@ -621,7 +652,7 @@ export default {
     margin-bottom: 0.5em; /* Spacing between paragraphs */
 }
 .tiptap-editor [contenteditable="true"] {
-  min-height: 100px; /* Ensure a minimum clickable/typeable area */
+  min-height: 60px; /* Ensure a minimum clickable/typeable area */
 }
 .tiptap-editor:focus-within,
 .tiptap-editor [contenteditable="true"]:focus {
@@ -646,8 +677,15 @@ export default {
 }
 
 .submit-btn {
-  padding: 10px 22px; /* Slightly larger padding */
-  border-radius: 6px;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
   border: none;
   background-color: #6200ee; /* Primary action color */
   color: white;
